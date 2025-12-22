@@ -12,7 +12,7 @@
         "default_title": "Open CSS Picker"
     },
     "side_panel": {
-        "default_path": "popup.html"
+        "default_path": "sidebar/index.html"
     },
     "background": {
         "service_worker": "background.js"
