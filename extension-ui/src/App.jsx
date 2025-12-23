@@ -12,7 +12,7 @@ function App() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'overview': return <OverviewTab />
+      case 'overview': return <OverviewTab onTabChange={setActiveTab} />
       case 'images': return <ImagesTab />
       case 'svgs': return <SvgsTab />
       case 'colors': return <ColorsTab />

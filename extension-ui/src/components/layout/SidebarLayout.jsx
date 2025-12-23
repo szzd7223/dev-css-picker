@@ -23,7 +23,7 @@ export default function SidebarLayout({ activeTab, onTabChange, children }) {
                 </div>
 
                 <div className="text-xs text-gray-400 font-medium flex items-center gap-1">
-                    <span className="bg-gray-50 px-2 py-1 rounded-md border border-gray-100">10/10 today</span>
+                    {/* Limit removed */}
                 </div>
             </header>
 
