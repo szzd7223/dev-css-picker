@@ -112,21 +112,21 @@ function createOverlay() {
     style.textContent = `
         .highlight-box { 
             position: fixed; 
-            border: 1px solid #6366f1; 
-            background: rgba(99, 102, 241, 0.05); 
+            border: 1px solid #3b82f6; 
+            background: rgba(59, 130, 246, 0.08); 
             pointer-events: none; 
             z-index: 10000; 
             box-sizing: border-box; 
             transition: all 0.05s ease-out; 
-            box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.1);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1);
         }
         .highlight-tag { 
             position: absolute; 
             bottom: 100%;
             left: 0;
-            background: #6366f1; 
+            background: #3b82f6; 
             color: white; 
-            padding: 2px 6px; 
+            padding: 1px 10px; 
             border-radius: 4px 4px 0 0; 
             font-size: 10px; 
             font-weight: 600; 
@@ -134,8 +134,9 @@ function createOverlay() {
             white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             margin-bottom: -1px;
+            height: 18px;
         }
         .layout-badge {
             background: rgba(255, 255, 255, 0.2);

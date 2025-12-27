@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Type, Palette, Box, Copy, Code, Layers } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Type, Palette, Box, Copy, Code, Layers, ArrowLeft, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import DomTree from './DomTree';
 import { ColorInput, SliderInput, SelectInput } from '../ui/StyleControls';
 import { generateTailwindClasses } from '../../utils/tailwindGenerator';
@@ -8,6 +8,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
     const [error, setError] = useState(null);
     const [localStyles, setLocalStyles] = useState({});
     const [generatedCode, setGeneratedCode] = useState('');
+    const [codeTab, setCodeTab] = useState('tailwind');
 
     // Initialize/Reset local state when selection changes
     useEffect(() => {
@@ -36,7 +37,6 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
         setGeneratedCode(code);
 
         // 2. Send Live Update
-        // Send ALL modified styles to ensure consistency
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, {
@@ -45,7 +45,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                         cpId: selectedElement.cpId,
                         styles: localStyles
                     }
-                }).catch(() => { }); // Suppress errors if connection lost momentarily
+                }).catch(() => { });
             }
         });
 
@@ -58,7 +58,6 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
     };
 
     const handleSelectNode = (cpId) => {
-        // Request full data for the clicked node from content script
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, {
@@ -69,8 +68,6 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                         onSelectElement(response);
                     }
                 });
-
-                // Also highlight it immediately
                 chrome.tabs.sendMessage(tabs[0].id, { type: 'HIGHLIGHT_NODE', payload: { cpId } });
             }
         });
@@ -78,12 +75,10 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(generatedCode);
-        // Could show a toast here
     };
 
-    // --- SETUP EFFECT (Connection & Initial Check) ---
+    // --- SETUP EFFECT ---
     useEffect(() => {
-        // Just verify connection, don't listen here (handled in App.jsx)
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (!tabs[0]?.id) {
                 setError("No active page found.");
@@ -92,19 +87,11 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
         setError(null);
     }, []);
 
-    // --- RENDER ---
-
     if (error) {
         return (
-            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
-                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
-                    <Box size={32} strokeWidth={1.5} />
-                </div>
-                <h2 className="text-lg font-bold text-gray-900 mb-2">Connection Error</h2>
-                <p className="text-gray-500 text-sm max-w-[200px] mb-4">{error}</p>
-                <button onClick={() => chrome.tabs.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                    Refresh Page
-                </button>
+            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in text-slate-400">
+                <p>{error}</p>
+                <button onClick={() => chrome.tabs.reload()} className="mt-4 text-blue-400 hover:text-blue-300">Refresh Page</button>
             </div>
         )
     }
@@ -112,59 +99,52 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
     if (!selectedElement) {
         return (
             <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
-                <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-slate-800 text-blue-500 rounded-full flex items-center justify-center mb-4">
                     <Box size={32} strokeWidth={1.5} />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900 mb-2">Inspector Mode Active</h2>
-                <p className="text-gray-500 text-sm max-w-[200px] mb-6">
+                <h2 className="text-lg font-bold text-white mb-2">Inspector Mode Active</h2>
+                <p className="text-slate-400 text-sm max-w-[200px] mb-6">
                     Hover over elements on the page to see details. Click to lock selection.
                 </p>
-                <div className="text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded border border-gray-100">
-                    Pro Tip: Click an element to edit styles live!
-                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-4 space-y-6 animate-fade-in pb-20">
-
-            {/* DOM TREE */}
-            <DomTree hierarchy={selectedElement.hierarchy} onSelectNode={handleSelectNode} />
-
-            <div className="space-y-4">
-                {/* COLORS */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-                        <Palette size={14} className="text-gray-400" />
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Colors</span>
-                    </div>
-                    <div className="p-4">
-                        <ColorInput
-                            label="Text Color"
-                            value={localStyles.color}
-                            onChange={(val) => handleStyleChange('color', val)}
-                        />
-                        <ColorInput
-                            label="Background"
-                            value={localStyles.backgroundColor}
-                            onChange={(val) => handleStyleChange('backgroundColor', val)}
-                        />
-                        <ColorInput
-                            label="Border Color"
-                            value={localStyles.borderColor}
-                            onChange={(val) => handleStyleChange('borderColor', val)}
-                        />
-                    </div>
+        <div className="p-4 space-y-8 animate-fade-in pb-20">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => onTabChange('overview')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+                        <ArrowLeft size={18} />
+                    </button>
+                    <h1 className="text-xl font-bold text-white">Inspect Element</h1>
                 </div>
+                <div className="p-2 bg-slate-800 rounded-full text-blue-400">
+                    <RefreshCw size={14} className="cursor-pointer hover:rotate-180 transition-transform duration-500" onClick={() => handleSelectNode(selectedElement.cpId)} />
+                </div>
+            </div>
 
+            {/* DOM HIERARCHY (Matches Overview) */}
+            <section>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-white">DOM Hierarchy</h3>
+                    <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">Shallow View</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-2 rounded-xl">
+                    <DomTree hierarchy={selectedElement.hierarchy} onSelectNode={handleSelectNode} />
+                </div>
+            </section>
+
+            {/* SECTIONS */}
+            <div className="space-y-6">
                 {/* TYPOGRAPHY */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-                        <Type size={14} className="text-gray-400" />
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typography</span>
+                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+                        <Type size={16} className="text-slate-400" />
+                        <span className="text-sm font-bold text-slate-200">Typography</span>
                     </div>
-                    <div className="p-4">
+                    <div className="p-4 space-y-4">
                         <SliderInput
                             label="Font Size"
                             value={localStyles.fontSize}
@@ -188,31 +168,43 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                     </div>
                 </div>
 
-                {/* LAYOUT */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-                        <Box size={14} className="text-gray-400" />
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Layout</span>
+                {/* COLORS */}
+                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+                        <Palette size={16} className="text-slate-400" />
+                        <span className="text-sm font-bold text-slate-200">Colors</span>
                     </div>
-                    <div className="p-4">
-                        <SliderInput
-                            label="Padding"
-                            value={localStyles.padding}
-                            onChange={(val) => handleStyleChange('padding', val)}
-                            min={0} max={64}
+                    <div className="p-4 space-y-4">
+                        <ColorInput
+                            label="Text Color"
+                            value={localStyles.color}
+                            onChange={(val) => handleStyleChange('color', val)}
                         />
-                        <SliderInput
-                            label="Margin"
-                            value={localStyles.margin}
-                            onChange={(val) => handleStyleChange('margin', val)}
-                            min={0} max={64}
+                        <ColorInput
+                            label="Background"
+                            value={localStyles.backgroundColor}
+                            onChange={(val) => handleStyleChange('backgroundColor', val)}
                         />
-                        <SliderInput
-                            label="Border Radius"
-                            value={localStyles.borderRadius}
-                            onChange={(val) => handleStyleChange('borderRadius', val)}
-                            min={0} max={50}
+                        <ColorInput
+                            label="Border Color"
+                            value={localStyles.borderColor}
+                            onChange={(val) => handleStyleChange('borderColor', val)}
                         />
+                    </div>
+                </div>
+
+                {/* LAYOUT */}
+                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+                        <Box size={16} className="text-slate-400" />
+                        <span className="text-sm font-bold text-slate-200">Layout</span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <SliderInput label="Padding" value={localStyles.padding} onChange={(val) => handleStyleChange('padding', val)} min={0} max={64} />
+                            <SliderInput label="Margin" value={localStyles.margin} onChange={(val) => handleStyleChange('margin', val)} min={0} max={64} />
+                        </div>
+                        <SliderInput label="Radius" value={localStyles.borderRadius} onChange={(val) => handleStyleChange('borderRadius', val)} min={0} max={50} />
                         <SelectInput
                             label="Display"
                             value={localStyles.display}
@@ -227,31 +219,37 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                         />
                     </div>
                 </div>
+            </div>
 
-                {/* GENERATED CODE */}
-                <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-lg overflow-hidden">
-                    <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Code size={14} className="text-blue-400" />
-                            <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">Tailwind Code</span>
-                        </div>
-                        <button
-                            onClick={copyToClipboard}
-                            className="text-slate-400 hover:text-white transition-colors"
-                            title="Copy to clipboard"
-                        >
-                            <Copy size={14} />
-                        </button>
-                    </div>
-                    <div className="p-4">
-                        <code className="text-sm font-mono text-green-400 break-words block">
-                            {generatedCode || 'No styles generated'}
+            {/* GENERATED CODE */}
+            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden mt-4">
+                <div className="flex border-b border-slate-800">
+                    <button
+                        onClick={() => setCodeTab('tailwind')}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors ${codeTab === 'tailwind' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Tailwind
+                    </button>
+                    <button
+                        onClick={() => setCodeTab('css')}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors ${codeTab === 'css' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        CSS
+                    </button>
+                    <button onClick={copyToClipboard} className="px-3 border-l border-slate-800 text-slate-400 hover:text-white">
+                        <Copy size={14} />
+                    </button>
+                </div>
+                <div className="p-4 bg-slate-950 font-mono text-xs">
+                    {codeTab === 'tailwind' ? (
+                        <code className="text-green-400 break-words block">
+                            {`<${selectedElement.tagName.toLowerCase()} class="${generatedCode}">`}
                         </code>
-                    </div>
-                    <div className="bg-slate-950 px-4 py-1.5 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between">
-                        <span>Changes are temporary</span>
-                        <span>{selectedElement.tagName}</span>
-                    </div>
+                    ) : (
+                        <code className="text-blue-300 break-words block whitespace-pre-wrap">
+                            {`${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n}`}
+                        </code>
+                    )}
                 </div>
             </div>
         </div>

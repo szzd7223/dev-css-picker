@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, Code, Layout, Layers } from 'lucide-react';
+import { ChevronRight, ChevronDown, Code } from 'lucide-react';
 
 export default function DomTree({ hierarchy, onSelectNode }) {
     if (!hierarchy || hierarchy.length === 0) return null;
@@ -22,74 +22,63 @@ export default function DomTree({ hierarchy, onSelectNode }) {
         if (node.isTarget) {
             depthShift = index;
         }
-        const indent = node.isChild ? (depthShift + 1) * 12 : index * 12;
+        // Normalize indent for visual tree
+        const indent = node.isChild ? (depthShift + 1) * 16 : index * 16;
         return { ...node, indent };
     });
 
     return (
-        <div className="mb-4">
-            <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-2">
-                    <Layers size={14} className="text-indigo-500" />
-                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Element Hierarchy</h3>
-                </div>
-            </div>
+        <div className="space-y-1 relative">
+            {items.map((node, index) => {
+                const isTarget = node.isTarget;
+                const isChild = node.isChild;
 
-            <div className="space-y-1 relative">
-                {items.map((node, index) => {
-                    const isTarget = node.isTarget;
-                    const isChild = node.isChild;
-
-                    return (
-                        <div
-                            key={node.cpId || index}
-                            onClick={() => onSelectNode(node.cpId)}
-                            onMouseEnter={() => handleNodeHover(node.cpId, true)}
-                            className={`
+                return (
+                    <div
+                        key={node.cpId || index}
+                        onClick={() => onSelectNode(node.cpId)}
+                        onMouseEnter={() => handleNodeHover(node.cpId, true)}
+                        className={`
                                 relative flex items-center p-2 rounded-lg transition-all cursor-pointer group border
                                 ${isTarget
-                                    ? 'bg-slate-900 border-slate-800 shadow-lg scale-[1.02] z-20'
-                                    : isChild
-                                        ? 'bg-blue-50/30 border-dashed border-blue-200 hover:border-blue-400'
-                                        : 'bg-white border-gray-100 hover:border-indigo-200 hover:shadow-sm'
-                                }
+                                ? 'bg-slate-800 border-slate-700 shadow-md z-10'
+                                : isChild
+                                    ? 'bg-slate-800/30 border-dashed border-slate-700/50 hover:border-slate-600'
+                                    : 'bg-transparent border-transparent hover:bg-slate-800/50'
+                            }
                             `}
-                            style={{ marginLeft: `${node.indent}px` }}
-                        >
-                            <div className={`
-                                w-7 h-7 rounded flex items-center justify-center mr-3 shrink-0
-                                ${isTarget ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-indigo-50 group-hover:text-indigo-600'}
+                        style={{ marginLeft: `${node.indent}px` }}
+                    >
+                        {/* Tag Icon */}
+                        <div className={`
+                                w-6 h-6 rounded flex items-center justify-center mr-2 shrink-0
+                                ${isTarget ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500 group-hover:text-slate-400'}
                             `}>
-                                {node.tagName === 'body' ? <Layout size={14} /> : <Code size={14} />}
-                            </div>
+                            <Code size={12} />
+                        </div>
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                    <span className={`font-mono text-[11px] font-bold ${isTarget ? 'text-indigo-400' : 'text-gray-700'}`}>
-                                        &lt;{node.tagName}&gt;
-                                    </span>
-                                    {isTarget ? (
-                                        <ChevronDown size={14} className="text-indigo-400" />
-                                    ) : (
-                                        <ChevronRight size={14} className="text-gray-300 group-hover:text-indigo-400" />
-                                    )}
+                        <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                            <span className={`font-mono text-xs font-bold ${isTarget ? 'text-blue-400' : 'text-purple-400'}`}>
+                                &lt;{node.tagName}&gt;
+                            </span>
+
+                            {(node.id || node.classes) && (
+                                <div className="text-[10px] truncate font-mono text-slate-500">
+                                    {node.id && <span className="mr-1 text-yellow-500/80">#{node.id}</span>}
+                                    {node.classes && <span>.{node.classes.replace(/\s+/g, '.')}</span>}
                                 </div>
-                                {(node.id || node.classes) && (
-                                    <div className={`text-[9px] truncate font-mono ${isTarget ? 'text-gray-400' : 'text-gray-400'}`}>
-                                        {node.id && <span className="mr-1 text-yellow-600/80">{node.id}</span>}
-                                        {node.classes && <span>{node.classes.replace(/\s+/g, '.')}</span>}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Indicator for children */}
-                            {isTarget && items.some(it => it.isChild) && (
-                                <div className="absolute -bottom-2 left-3 w-px h-2 bg-indigo-500/50" />
                             )}
                         </div>
-                    );
-                })}
-            </div>
+
+                        {/* Expand/Collapse Indicator (visual only for now) */}
+                        {isTarget ? (
+                            <ChevronDown size={14} className="text-slate-500 ml-2" />
+                        ) : (
+                            <ChevronRight size={14} className="text-slate-700 group-hover:text-slate-500 ml-2" />
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

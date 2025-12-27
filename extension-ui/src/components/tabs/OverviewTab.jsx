@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePageData } from '../../hooks/usePageData';
-import { Copy, Check, MousePointer2 } from 'lucide-react';
+import { Copy, Check, MousePointer2, Type, Palette, Layout, Link as LinkIcon, RefreshCw, Box } from 'lucide-react';
 import DomTree from './DomTree';
 
 export default function OverviewTab({ onTabChange, onToggleInspect, selectedElement, onSelectElement }) {
@@ -36,82 +36,94 @@ export default function OverviewTab({ onTabChange, onToggleInspect, selectedElem
 
     if (loading) {
         return (
-            <div className="p-8 flex flex-col items-center justify-center animate-pulse space-y-4">
-                <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                <p className="text-gray-400 text-sm">Scanning page assets...</p>
+            <div className="flex flex-col items-center justify-center h-64 animate-pulse space-y-4">
+                <div className="w-10 h-10 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin"></div>
+                <p className="text-slate-500 text-sm">Scanning page assets...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="p-4 text-center">
-                <p className="text-red-500 mb-2">{error}</p>
-                <button onClick={rescan} className="text-sm text-indigo-600 font-medium hover:underline">Retry</button>
+            <div className="p-8 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                    <Box className="text-red-500" size={24} />
+                </div>
+                <p className="text-red-400 mb-4">{error}</p>
+                <button
+                    onClick={rescan}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition"
+                >
+                    <RefreshCw size={14} /> Retry Scan
+                </button>
             </div>
         )
     }
 
-    const renderToken = (label, value) => (
-        <div
-            onClick={() => handleCopy(value)}
-            className="flex items-center justify-between p-2 rounded-lg border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/30 cursor-pointer transition-all group"
-        >
-            <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded shadow-sm border border-gray-200" style={{ backgroundColor: value }} />
-                <span className="font-mono text-xs text-gray-700">{value}</span>
-            </div>
-            {copiedToken === value ? (
-                <Check size={12} className="text-green-500" />
-            ) : (
-                <Copy size={12} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-            )}
-        </div>
-    );
-
     return (
-        <div className="p-4 space-y-6 animate-fade-in pb-20">
+        <div className="p-4 space-y-8 animate-fade-in pb-20">
+            {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">{meta.title || 'Page Overview'}</h1>
-                <div className="flex items-center gap-2 text-blue-500 text-sm overflow-hidden">
-                    <span className="truncate underline cursor-pointer">{(meta.url || window.location.href).split('?')[0]}</span>
+                <div className="flex justify-between items-start">
+                    <h1 className="text-2xl font-bold text-white mb-1">{meta.title || 'Page Overview'}</h1>
+                    <div className="p-2 bg-blue-600 rounded-lg text-white">
+                        <RefreshCw size={16} onClick={rescan} className="cursor-pointer" />
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 text-blue-400 text-xs font-mono">
+                    <LinkIcon size={12} />
+                    <span className="truncate underline cursor-pointer hover:text-blue-300">
+                        {(meta.url || window.location.href).split('?')[0]}
+                    </span>
                 </div>
             </div>
 
             {/* DOM HIERARCHY */}
-            {selectedElement ? (
-                <div className="bg-slate-50/50 p-3 rounded-xl border border-gray-100">
-                    <DomTree hierarchy={selectedElement.hierarchy} onSelectNode={handleSelectNode} />
+            <section>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-white">DOM Hierarchy</h3>
+                    <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">Shallow View</span>
                 </div>
-            ) : (
-                <div
-                    onClick={handlePlaceholderClick}
-                    className="p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all cursor-pointer flex flex-col items-center gap-2 group"
-                >
-                    <MousePointer2 size={24} className="text-gray-400 group-hover:text-indigo-500" />
-                    <p className="text-xs font-semibold text-gray-500 group-hover:text-indigo-600">Click to Select Element</p>
-                </div>
-            )}
+
+                {selectedElement ? (
+                    <div className="bg-slate-900 border border-slate-800 p-2 rounded-xl">
+                        <DomTree hierarchy={selectedElement.hierarchy} onSelectNode={handleSelectNode} />
+                    </div>
+                ) : (
+                    <div
+                        onClick={handlePlaceholderClick}
+                        className="p-6 rounded-xl border border-dashed border-slate-700 hover:border-blue-500 hover:bg-slate-800/50 transition-all cursor-pointer flex flex-col items-center gap-3 group"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-blue-500/20 group-hover:text-blue-400 transition-colors">
+                            <MousePointer2 size={18} className="text-slate-400 group-hover:text-blue-400" />
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm font-semibold text-slate-300 group-hover:text-white">Select an Element</p>
+                            <p className="text-xs text-slate-500">Click to start inspecting the DOM</p>
+                        </div>
+                    </div>
+                )}
+            </section>
 
             {/* COLORS */}
             <section>
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Extracted Colors</h3>
-                    <button className="text-xs text-indigo-600 font-bold hover:underline">COPY ALL</button>
+                    <h3 className="text-sm font-bold text-white">Extracted Colors</h3>
+                    <button className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-wide">COPY ALL</button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     {bgColors.slice(0, 4).map((c, i) => (
-                        <div key={i} onClick={() => handleCopy(c.value)} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:border-indigo-200 transition-all group relative">
+                        <div key={i} onClick={() => handleCopy(c.value)} className="bg-slate-800 p-3 rounded-xl border border-slate-700 cursor-pointer hover:border-slate-500 transition-all group relative overflow-hidden">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg shadow-inner border border-gray-100" style={{ backgroundColor: c.value }} />
-                                <div>
-                                    <div className="text-sm font-mono font-bold text-gray-900 uppercase">{c.value}</div>
-                                    <div className="text-[10px] text-gray-400 uppercase">{i === 0 ? 'Primary' : i === 1 ? 'Background' : 'Accent'}</div>
+                                <div className="w-10 h-10 rounded-lg shadow-sm border border-slate-600/50" style={{ backgroundColor: c.value }} />
+                                <div className="min-w-0">
+                                    <div className="text-sm font-mono font-bold text-white truncate">{c.value}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">{i === 0 ? 'Primary' : i === 1 ? 'Background' : 'Surface'}</div>
                                 </div>
                             </div>
                             {copiedToken === c.value && (
-                                <div className="absolute inset-0 bg-white/90 rounded-xl flex items-center justify-center text-green-600 font-bold text-xs animate-fade-in">
-                                    COPIED!
+                                <div className="absolute inset-0 bg-slate-800/95 flex items-center justify-center text-green-400 font-bold text-xs animate-fade-in gap-1">
+                                    <Check size={14} /> COPIED
                                 </div>
                             )}
                         </div>
@@ -120,32 +132,34 @@ export default function OverviewTab({ onTabChange, onToggleInspect, selectedElem
             </section>
 
             {/* TYPOGRAPHY */}
-            <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-4">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Typography</h3>
-                    <div className="bg-indigo-50 text-indigo-600 p-1.5 rounded-lg">
-                        <MousePointer2 size={14} />
+            <section>
+                <h3 className="text-sm font-bold text-white mb-3">Typography</h3>
+                <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 relative overflow-hidden">
+                    <div className="absolute top-4 right-4 bg-slate-700/50 p-1.5 rounded-lg text-blue-400">
+                        <Type size={16} />
                     </div>
-                </div>
-                {fonts.slice(0, 1).map((f, i) => (
-                    <div key={i} className="mb-4">
-                        <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Primary Font</div>
-                        <div className="text-2xl font-bold text-gray-900 mb-2 truncate" style={{ fontFamily: f.value }}>{f.value}</div>
 
-                        <div className="flex flex-wrap gap-2">
-                            {['400', '600', '700'].map(w => (
-                                <span key={w} className="bg-gray-100 px-3 py-1 rounded text-xs font-bold text-gray-600">{w}</span>
-                            ))}
+                    {fonts.slice(0, 1).map((f, i) => (
+                        <div key={i}>
+                            <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-wider">Primary Font</div>
+                            <div className="text-3xl font-medium text-white mb-4 truncate" style={{ fontFamily: f.value }}>{f.value}</div>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {['400', '600', '700'].map(w => (
+                                    <span key={w} className="bg-slate-900 border border-slate-700 px-3 py-1 rounded-md text-xs font-mono text-slate-300">{w}</span>
+                                ))}
+                            </div>
+
+                            <div>
+                                <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-wider">Sizes Used</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {['14px', '16px', '24px', '32px'].map(s => (
+                                        <span key={s} className="bg-slate-900 border border-slate-700 px-3 py-1 rounded-md text-xs font-mono text-slate-300">{s}</span>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                ))}
-                <div className="space-y-2">
-                    <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Sizes Used</div>
-                    <div className="flex flex-wrap gap-2">
-                        {['14px', '16px', '24px', '32px'].map(s => (
-                            <span key={s} className="bg-slate-900 text-white px-3 py-1 rounded text-xs font-mono">{s}</span>
-                        ))}
-                    </div>
+                    ))}
                 </div>
             </section>
         </div>
