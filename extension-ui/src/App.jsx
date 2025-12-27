@@ -69,6 +69,11 @@ function App() {
 
   // 3. Global message listener for element selection
   useEffect(() => {
+    // Connect to background to detect closure
+    if (typeof chrome !== 'undefined' && chrome.runtime?.connect) {
+      chrome.runtime.connect({ name: 'sidepanel-connection' });
+    }
+
     const messageListener = (message) => {
       if (message.type === 'ELEMENT_SELECTED') {
         setInspectorData(message.payload);
