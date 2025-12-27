@@ -10,17 +10,17 @@ const TABS = [
     { id: 'profile', icon: User, label: 'Profile' },
 ];
 
-export default function SidebarLayout({ activeTab, onTabChange, children }) {
+export default function SidebarLayout({ activeTab, onTabChange, isInspectMode, onToggleInspect, children }) {
     return (
         <div className="flex flex-col h-screen bg-white text-slate-900 font-sans overflow-hidden">
             {/* Fixed Header */}
             <header className="flex-none px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between z-10 sticky top-0">
                 <div
                     className="flex items-center gap-2 cursor-pointer group"
-                    onClick={() => onTabChange(activeTab === 'inspector' ? 'overview' : 'inspector')}
+                    onClick={onToggleInspect}
                 >
-                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${activeTab === 'inspector' ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 shadow-sm ${activeTab === 'inspector' ? 'left-4.5' : 'left-0.5'}`}></div>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${isInspectMode ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 shadow-sm ${isInspectMode ? 'left-4' : 'left-0.5'}`}></div>
                     </div>
                     <span className="font-semibold text-sm group-hover:text-indigo-600 transition-colors">Inspect mode</span>
                 </div>

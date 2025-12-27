@@ -5,6 +5,7 @@
     "description": "A minimal Chrome Extension to pick and view CSS elements.",
     "permissions": [
         "activeTab",
+        "tabs",
         "scripting",
         "sidePanel"
     ],

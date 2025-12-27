@@ -1,45 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import { Type, Palette, Box, Copy } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Type, Palette, Box, Copy, Code, Layers } from 'lucide-react';
+import DomTree from './DomTree';
+import { ColorInput, SliderInput, SelectInput } from '../ui/StyleControls';
+import { generateTailwindClasses } from '../../utils/tailwindGenerator';
 
 export default function InspectorTab({ selectedElement, onSelectElement, onTabChange }) {
-    // Local state removed, using props
-
-
     const [error, setError] = useState(null);
+    const [localStyles, setLocalStyles] = useState({});
+    const [generatedCode, setGeneratedCode] = useState('');
 
+    // Initialize/Reset local state when selection changes
     useEffect(() => {
-        // Function to send message to active tab
-        const sendMessage = (type) => {
-            chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-                if (tabs[0]?.id) {
-                    chrome.tabs.sendMessage(tabs[0].id, { type }).catch((err) => {
-                        console.log("Could not send message to content script:", err);
-                        setError("Connection failed. Please reload the page.");
-                    });
-                } else {
-                    setError("No active page found.");
-                }
+        if (selectedElement) {
+            setLocalStyles({
+                color: selectedElement.colors.text,
+                backgroundColor: selectedElement.colors.background,
+                fontSize: selectedElement.typography.size,
+                fontWeight: selectedElement.typography.weight,
+                borderRadius: selectedElement.boxModel.borderRadius,
+                padding: selectedElement.boxModel.padding,
+                margin: selectedElement.boxModel.margin,
+                borderWidth: '0px',
+                borderColor: selectedElement.colors.border || 'transparent',
+                display: selectedElement.boxModel.display
             });
-        };
+        }
+    }, [selectedElement?.cpId]);
 
-        // Start picking mode
-        sendMessage('START_PICKING');
-        setError(null);
+    // Effect: Update Tailwind code and Live Preview when local styles change
+    useEffect(() => {
+        if (!selectedElement || Object.keys(localStyles).length === 0) return;
 
-        // Listen for selection
-        const messageListener = (message) => {
-            if (message.type === 'ELEMENT_SELECTED') {
-                onSelectElement(message.payload);
+        // 1. Generate Code
+        const code = generateTailwindClasses(localStyles);
+        setGeneratedCode(code);
+
+        // 2. Send Live Update
+        // Send ALL modified styles to ensure consistency
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    type: 'UPDATE_STYLE',
+                    payload: {
+                        cpId: selectedElement.cpId,
+                        styles: localStyles
+                    }
+                }).catch(() => { }); // Suppress errors if connection lost momentarily
             }
-        };
+        });
 
-        chrome.runtime.onMessage.addListener(messageListener);
+    }, [localStyles, selectedElement]);
 
-        return () => {
-            sendMessage('STOP_PICKING');
-            chrome.runtime.onMessage.removeListener(messageListener);
-        };
+
+    // Handlers
+    const handleStyleChange = (property, value) => {
+        setLocalStyles(prev => ({ ...prev, [property]: value }));
+    };
+
+    const handleSelectNode = (cpId) => {
+        // Request full data for the clicked node from content script
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    type: 'SELECT_NODE',
+                    payload: { cpId }
+                }, (response) => {
+                    if (response && response.tagName) {
+                        onSelectElement(response);
+                    }
+                });
+
+                // Also highlight it immediately
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'HIGHLIGHT_NODE', payload: { cpId } });
+            }
+        });
+    };
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(generatedCode);
+        // Could show a toast here
+    };
+
+    // --- SETUP EFFECT (Connection & Initial Check) ---
+    useEffect(() => {
+        // Just verify connection, don't listen here (handled in App.jsx)
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            if (!tabs[0]?.id) {
+                setError("No active page found.");
+            }
+        });
+        setError(null);
     }, []);
+
+    // --- RENDER ---
 
     if (error) {
         return (
@@ -48,13 +101,8 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                     <Box size={32} strokeWidth={1.5} />
                 </div>
                 <h2 className="text-lg font-bold text-gray-900 mb-2">Connection Error</h2>
-                <p className="text-gray-500 text-sm max-w-[200px] mb-4">
-                    {error}
-                </p>
-                <button
-                    onClick={() => chrome.tabs.reload()}
-                    className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
-                >
+                <p className="text-gray-500 text-sm max-w-[200px] mb-4">{error}</p>
+                <button onClick={() => chrome.tabs.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
                     Refresh Page
                 </button>
             </div>
@@ -71,129 +119,141 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                 <p className="text-gray-500 text-sm max-w-[200px] mb-6">
                     Hover over elements on the page to see details. Click to lock selection.
                 </p>
-                <button
-                    onClick={() => onTabChange('overview')}
-                    className="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                    Stop Inspecting
-                </button>
+                <div className="text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded border border-gray-100">
+                    Pro Tip: Click an element to edit styles live!
+                </div>
             </div>
         );
     }
 
-    const {
-        tagName,
-        fullSelector,
-        colors,
-        typography,
-        boxModel,
-        width,
-        height
-    } = selectedElement;
-
     return (
-        <div className="p-4 space-y-6 animate-fade-in pb-20"> {/* pb-20 for bottom nav clearance */}
+        <div className="p-4 space-y-6 animate-fade-in pb-20">
 
-            {/* Header */}
-            <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Element Type</div>
-                <h1 className="text-xl font-bold text-gray-900 capitalize mb-2">
-                    {tagName === 'h1' || tagName === 'h2' || tagName === 'h3' ? 'Heading' :
-                        tagName === 'img' ? 'Image' :
-                            tagName === 'a' ? 'Link' :
-                                tagName === 'div' ? 'Container' : tagName}
-                </h1>
-                <div className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-mono border border-indigo-100 break-all">
-                    {fullSelector}
+            {/* DOM TREE */}
+            <DomTree hierarchy={selectedElement.hierarchy} onSelectNode={handleSelectNode} />
+
+            <div className="space-y-4">
+                {/* COLORS */}
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
+                        <Palette size={14} className="text-gray-400" />
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Colors</span>
+                    </div>
+                    <div className="p-4">
+                        <ColorInput
+                            label="Text Color"
+                            value={localStyles.color}
+                            onChange={(val) => handleStyleChange('color', val)}
+                        />
+                        <ColorInput
+                            label="Background"
+                            value={localStyles.backgroundColor}
+                            onChange={(val) => handleStyleChange('backgroundColor', val)}
+                        />
+                        <ColorInput
+                            label="Border Color"
+                            value={localStyles.borderColor}
+                            onChange={(val) => handleStyleChange('borderColor', val)}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/* Colors */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-                    <Palette size={14} className="text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Colors</span>
+                {/* TYPOGRAPHY */}
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
+                        <Type size={14} className="text-gray-400" />
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typography</span>
+                    </div>
+                    <div className="p-4">
+                        <SliderInput
+                            label="Font Size"
+                            value={localStyles.fontSize}
+                            onChange={(val) => handleStyleChange('fontSize', val)}
+                            min={8} max={72}
+                        />
+                        <SelectInput
+                            label="Font Weight"
+                            value={localStyles.fontWeight}
+                            onChange={(val) => handleStyleChange('fontWeight', val)}
+                            options={[
+                                { value: '100', label: 'Thin (100)' },
+                                { value: '300', label: 'Light (300)' },
+                                { value: '400', label: 'Normal (400)' },
+                                { value: '500', label: 'Medium (500)' },
+                                { value: '600', label: 'SemiBold (600)' },
+                                { value: '700', label: 'Bold (700)' },
+                                { value: '900', label: 'Black (900)' },
+                            ]}
+                        />
+                    </div>
                 </div>
-                <div className="p-4 space-y-4">
 
-                    {/* Background */}
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Background</span>
+                {/* LAYOUT */}
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
+                        <Box size={14} className="text-gray-400" />
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Layout</span>
+                    </div>
+                    <div className="p-4">
+                        <SliderInput
+                            label="Padding"
+                            value={localStyles.padding}
+                            onChange={(val) => handleStyleChange('padding', val)}
+                            min={0} max={64}
+                        />
+                        <SliderInput
+                            label="Margin"
+                            value={localStyles.margin}
+                            onChange={(val) => handleStyleChange('margin', val)}
+                            min={0} max={64}
+                        />
+                        <SliderInput
+                            label="Border Radius"
+                            value={localStyles.borderRadius}
+                            onChange={(val) => handleStyleChange('borderRadius', val)}
+                            min={0} max={50}
+                        />
+                        <SelectInput
+                            label="Display"
+                            value={localStyles.display}
+                            onChange={(val) => handleStyleChange('display', val)}
+                            options={[
+                                { value: 'block', label: 'block' },
+                                { value: 'flex', label: 'flex' },
+                                { value: 'grid', label: 'grid' },
+                                { value: 'inline-block', label: 'inline-block' },
+                                { value: 'none', label: 'none' },
+                            ]}
+                        />
+                    </div>
+                </div>
+
+                {/* GENERATED CODE */}
+                <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-lg overflow-hidden">
+                    <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-md border border-gray-200 shadow-sm"
-                                style={{
-                                    backgroundColor: colors.background === 'transparent' ? 'white' : colors.background,
-                                    backgroundImage: colors.background === 'transparent' ? 'conic-gradient(#eee 0.25turn, #fff 0.25turn 0.5turn, #eee 0.5turn 0.75turn, #fff 0.75turn)' : 'none',
-                                    backgroundSize: '8px 8px'
-                                }}>
-                            </div>
-                            <span className="text-xs font-bold font-mono text-gray-900 uppercase">{colors.background === 'transparent' ? 'None' : colors.background}</span>
+                            <Code size={14} className="text-blue-400" />
+                            <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">Tailwind Code</span>
                         </div>
+                        <button
+                            onClick={copyToClipboard}
+                            className="text-slate-400 hover:text-white transition-colors"
+                            title="Copy to clipboard"
+                        >
+                            <Copy size={14} />
+                        </button>
                     </div>
-
-                    {/* Text Color */}
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Text Color</span>
-                        <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-md border border-gray-200 shadow-sm" style={{ backgroundColor: colors.text }}></div>
-                            <span className="text-xs font-bold font-mono text-gray-900 uppercase">{colors.text}</span>
-                        </div>
+                    <div className="p-4">
+                        <code className="text-sm font-mono text-green-400 break-words block">
+                            {generatedCode || 'No styles generated'}
+                        </code>
+                    </div>
+                    <div className="bg-slate-950 px-4 py-1.5 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between">
+                        <span>Changes are temporary</span>
+                        <span>{selectedElement.tagName}</span>
                     </div>
                 </div>
             </div>
-
-            {/* Typography */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-                    <Type size={14} className="text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typography</span>
-                </div>
-                <div className="p-4 space-y-3">
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                        <span className="text-sm text-gray-500">Font</span>
-                        <span className="text-sm font-medium text-gray-900 text-right max-w-[150px] truncate" title={typography.font}>
-                            {typography.font}
-                        </span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                        <span className="text-sm text-gray-500">Size</span>
-                        <div>
-                            <span className="text-sm font-bold text-gray-900">{typography.size}</span>
-                            {/* Calculated rem? rough est: 16px = 1rem */}
-                            <span className="text-xs text-gray-400 ml-1">
-                                ({(parseFloat(typography.size) / 16).toFixed(2)}rem)
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                        <span className="text-sm text-gray-500">Weight</span>
-                        <span className="text-sm font-bold text-gray-900">{typography.weight}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Line Height</span>
-                        <span className="text-sm font-bold text-gray-900">{typography.lineHeight}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Box Model / Info */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-                    <Box size={14} className="text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Box Model</span>
-                </div>
-                <div className="p-4 grid grid-cols-2 gap-4">
-                    <div className='flex flex-col'>
-                        <span className="text-xs text-gray-400 mb-1">Dimensions</span>
-                        <span className="text-sm font-mono font-medium text-gray-900">{width} × {height} px</span>
-                    </div>
-                    <div className='flex flex-col'>
-                        <span className="text-xs text-gray-400 mb-1">Display</span>
-                        <span className="text-sm font-mono font-medium text-gray-900">{boxModel.display}</span>
-                    </div>
-                </div>
-            </div>
-
         </div>
     );
 }
