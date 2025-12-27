@@ -9,6 +9,7 @@ import ProfileTab from './components/tabs/ProfileTab'
 
 function App() {
   const [activeTab, setActiveTab] = useState('overview')
+  const [inspectorData, setInspectorData] = useState(null)
 
   const renderTab = () => {
     switch (activeTab) {
@@ -16,7 +17,7 @@ function App() {
       case 'images': return <ImagesTab />
       case 'svgs': return <SvgsTab />
       case 'colors': return <ColorsTab />
-      case 'inspector': return <InspectorTab />
+      case 'inspector': return <InspectorTab selectedElement={inspectorData} onSelectElement={setInspectorData} onTabChange={setActiveTab} />
       case 'profile': return <ProfileTab />
       default: return <OverviewTab />
     }

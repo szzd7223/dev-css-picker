@@ -8,6 +8,9 @@
         "scripting",
         "sidePanel"
     ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
     "action": {
         "default_title": "Open CSS Picker"
     },

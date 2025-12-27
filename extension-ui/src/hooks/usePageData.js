@@ -29,7 +29,7 @@ export function usePageData() {
         }
 
         // Real Logic
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             const activeTab = tabs[0];
             if (!activeTab?.id) {
                 setData(prev => ({ ...prev, loading: false, error: "No active tab." }));
