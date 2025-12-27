@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SidebarLayout from './components/layout/SidebarLayout'
 import OverviewTab from './components/tabs/OverviewTab'
 import ImagesTab from './components/tabs/ImagesTab'
@@ -10,6 +10,13 @@ import ProfileTab from './components/tabs/ProfileTab'
 function App() {
   const [activeTab, setActiveTab] = useState('overview')
   const [inspectorData, setInspectorData] = useState(null)
+
+  useEffect(() => {
+    // Establish a long-lived connection to detect sidepanel closure
+    if (typeof chrome !== 'undefined' && chrome.runtime?.connect) {
+      chrome.runtime.connect({ name: 'sidepanel-connection' });
+    }
+  }, []);
 
   const renderTab = () => {
     switch (activeTab) {
