@@ -1,60 +1,156 @@
 import React, { useEffect, useState } from 'react';
-import { Type, Palette, Box, Copy, Code, Layers, ArrowLeft, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
+import { Type, Palette, Box, Copy, Code, Layers, ArrowLeft, RefreshCw, ChevronDown, ChevronRight, Check, Play, Circle, Square, MousePointerClick } from 'lucide-react';
 import DomTree from './DomTree';
-import { ColorInput, SliderInput, SelectInput } from '../ui/StyleControls';
+import { ColorInput, SliderInput, SelectInput, SpacingInput } from '../ui/StyleControls';
 import { generateTailwindClasses } from '../../utils/tailwindGenerator';
 
-export default function InspectorTab({ selectedElement, onSelectElement, onTabChange }) {
-    const [error, setError] = useState(null);
-    const [localStyles, setLocalStyles] = useState({});
-    const [generatedCode, setGeneratedCode] = useState('');
-    const [codeTab, setCodeTab] = useState('tailwind');
+const ShapeButton = ({ onClick, icon: Icon, label, active }) => (
+    <button
+        onClick={onClick}
+        className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-all border ${active ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}
+        title={label}
+    >
+        <Icon size={16} />
+        <span className="text-[10px] font-medium">{label}</span>
+    </button>
+);
 
-    // Initialize/Reset local state when selection changes
+export default function InspectorTab({ selectedElement, onSelectElement, onTabChange, codeTab, setCodeTab }) {
+    const [error, setError] = useState(null);
+    const [originalStyles, setOriginalStyles] = useState({});
+    const [localStyles, setLocalStyles] = useState(() => {
+        if (!selectedElement) return {};
+        const cleanPx = (val) => {
+            if (typeof val === 'object' && val !== null) {
+                const out = {};
+                for (const k in val) out[k] = cleanPx(val[k]);
+                return out;
+            }
+            if (!val || val === 'none' || val === 'auto') return val;
+            const parsed = parseFloat(val);
+            if (isNaN(parsed) || !isFinite(parsed)) return '0px';
+            if (parsed > 10000) return '0px'; // Sanity check for weird browser values
+            return `${Math.round(parsed)}px`;
+        };
+
+        return {
+            color: selectedElement.colors.text,
+            backgroundColor: selectedElement.colors.background,
+            fontSize: selectedElement.typography.size,
+            fontWeight: selectedElement.typography.weight,
+            borderRadius: cleanPx(selectedElement.boxModel.borderRadius),
+            padding: cleanPx(selectedElement.boxModel.padding),
+            margin: cleanPx(selectedElement.boxModel.margin),
+            borderWidth: cleanPx(selectedElement.boxModel.borderWidth),
+            borderColor: selectedElement.colors.border || 'transparent',
+            display: selectedElement.boxModel.display,
+            width: selectedElement.width + 'px',
+            height: selectedElement.height + 'px'
+        };
+    });
+    const [generatedCode, setGeneratedCode] = useState('');
+    const [isCopied, setIsCopied] = useState(false);
+    const [generatedCss, setGeneratedCss] = useState('');
+
+    // Sync state if selectedElement data changes (e.g. Refresh)
     useEffect(() => {
         if (selectedElement) {
-            setLocalStyles({
+            const cleanPx = (val) => {
+                if (typeof val === 'object' && val !== null) {
+                    const out = {};
+                    for (const k in val) out[k] = cleanPx(val[k]);
+                    return out;
+                }
+                if (!val || val === 'none' || val === 'auto') return val;
+                const parsed = parseFloat(val);
+                if (isNaN(parsed) || !isFinite(parsed)) return '0px';
+                if (parsed > 10000) return '0px';
+                return `${Math.round(parsed)}px`;
+            };
+
+            const initialState = {
                 color: selectedElement.colors.text,
                 backgroundColor: selectedElement.colors.background,
                 fontSize: selectedElement.typography.size,
                 fontWeight: selectedElement.typography.weight,
-                borderRadius: selectedElement.boxModel.borderRadius,
-                padding: selectedElement.boxModel.padding,
-                margin: selectedElement.boxModel.margin,
-                borderWidth: '0px',
+                borderRadius: cleanPx(selectedElement.boxModel.borderRadius),
+                padding: cleanPx(selectedElement.boxModel.padding),
+                margin: cleanPx(selectedElement.boxModel.margin),
+                borderWidth: cleanPx(selectedElement.boxModel.borderWidth),
                 borderColor: selectedElement.colors.border || 'transparent',
-                display: selectedElement.boxModel.display
-            });
-        }
-    }, [selectedElement?.cpId]);
+                display: selectedElement.boxModel.display,
+                width: selectedElement.width + 'px',
+                height: selectedElement.height + 'px'
+            };
 
-    // Effect: Update Tailwind code and Live Preview when local styles change
+            setOriginalStyles(initialState);
+            setLocalStyles(initialState);
+        }
+    }, [selectedElement]);
+
+    // 1. Logic for Code Generation (Runs whenever styles change)
     useEffect(() => {
         if (!selectedElement || Object.keys(localStyles).length === 0) return;
 
-        // 1. Generate Code
         const code = generateTailwindClasses(localStyles);
         setGeneratedCode(code);
 
-        // 2. Send Live Update
+        const cssBlock = `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n  width: ${localStyles.width};\n  height: ${localStyles.height};\n}`;
+        setGeneratedCss(cssBlock);
+    }, [localStyles, selectedElement]);
+
+    // 2. Logic for Live Updates (Triggered only by user interaction)
+    const sendLiveUpdate = (updatedStyles) => {
+        if (!selectedElement) return;
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, {
                     type: 'UPDATE_STYLE',
                     payload: {
                         cpId: selectedElement.cpId,
-                        styles: localStyles
+                        styles: updatedStyles
                     }
                 }).catch(() => { });
             }
         });
-
-    }, [localStyles, selectedElement]);
+    };
 
 
     // Handlers
     const handleStyleChange = (property, value) => {
-        setLocalStyles(prev => ({ ...prev, [property]: value }));
+        const nextStyles = { ...localStyles, [property]: value };
+        setLocalStyles(nextStyles);
+
+        // Send only the change to preserve other original styles on the page
+        sendLiveUpdate({ [property]: value });
+    };
+
+    const handleReset = (property) => {
+        if (originalStyles[property] !== undefined) {
+            handleStyleChange(property, originalStyles[property]);
+        }
+    };
+
+    const applyShape = (shape) => {
+        const updates = {};
+        if (shape === 'circle') {
+            updates.borderRadius = '50%';
+            // Force square aspect ratio if possible, or just set radius
+            // For now, let's just do radius + equal width/height if it has dimensions
+            const size = Math.max(parseInt(localStyles.width) || 0, parseInt(localStyles.height) || 0);
+            if (size > 0) {
+                updates.width = `${size}px`;
+                updates.height = `${size}px`;
+            }
+        } else if (shape === 'rounded') {
+            updates.borderRadius = '8px';
+        } else if (shape === 'square') {
+            updates.borderRadius = '0px';
+        }
+
+        const nextStyles = { ...localStyles, ...updates };
+        setLocalStyles(nextStyles);
+        sendLiveUpdate(updates);
     };
 
     const handleSelectNode = (cpId) => {
@@ -74,7 +170,13 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(generatedCode);
+        const generatedCss = `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n  width: ${localStyles.width};\n  height: ${localStyles.height};\n}`;
+        const textToCopy = codeTab === 'tailwind'
+            ? `<${selectedElement.tagName.toLowerCase()} class="${generatedCode}">`
+            : generatedCss;
+        navigator.clipboard.writeText(textToCopy);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     };
 
     // --- SETUP EFFECT ---
@@ -149,12 +251,16 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             label="Font Size"
                             value={localStyles.fontSize}
                             onChange={(val) => handleStyleChange('fontSize', val)}
+                            originalValue={originalStyles.fontSize}
+                            onReset={() => handleReset('fontSize')}
                             min={8} max={72}
                         />
                         <SelectInput
                             label="Font Weight"
                             value={localStyles.fontWeight}
                             onChange={(val) => handleStyleChange('fontWeight', val)}
+                            originalValue={originalStyles.fontWeight}
+                            onReset={() => handleReset('fontWeight')}
                             options={[
                                 { value: '100', label: 'Thin (100)' },
                                 { value: '300', label: 'Light (300)' },
@@ -179,16 +285,22 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             label="Text Color"
                             value={localStyles.color}
                             onChange={(val) => handleStyleChange('color', val)}
+                            originalValue={originalStyles.color}
+                            onReset={() => handleReset('color')}
                         />
                         <ColorInput
                             label="Background"
                             value={localStyles.backgroundColor}
                             onChange={(val) => handleStyleChange('backgroundColor', val)}
+                            originalValue={originalStyles.backgroundColor}
+                            onReset={() => handleReset('backgroundColor')}
                         />
                         <ColorInput
                             label="Border Color"
                             value={localStyles.borderColor}
                             onChange={(val) => handleStyleChange('borderColor', val)}
+                            originalValue={originalStyles.borderColor}
+                            onReset={() => handleReset('borderColor')}
                         />
                     </div>
                 </div>
@@ -200,15 +312,27 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                         <span className="text-sm font-bold text-slate-200">Layout</span>
                     </div>
                     <div className="p-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <SliderInput label="Padding" value={localStyles.padding} onChange={(val) => handleStyleChange('padding', val)} min={0} max={64} />
-                            <SliderInput label="Margin" value={localStyles.margin} onChange={(val) => handleStyleChange('margin', val)} min={0} max={64} />
-                        </div>
-                        <SliderInput label="Radius" value={localStyles.borderRadius} onChange={(val) => handleStyleChange('borderRadius', val)} min={0} max={50} />
+                        <SpacingInput
+                            label="Padding"
+                            values={localStyles.padding}
+                            onChange={(val) => handleStyleChange('padding', val)}
+                            originalValues={originalStyles.padding}
+                            onReset={() => handleReset('padding')}
+                        />
+                        <SpacingInput
+                            label="Margin"
+                            values={localStyles.margin}
+                            onChange={(val) => handleStyleChange('margin', val)}
+                            originalValues={originalStyles.margin}
+                            onReset={() => handleReset('margin')}
+                        />
+                        <SliderInput label="Radius" value={localStyles.borderRadius} onChange={(val) => handleStyleChange('borderRadius', val)} originalValue={originalStyles.borderRadius} onReset={() => handleReset('borderRadius')} min={0} max={50} />
                         <SelectInput
                             label="Display"
                             value={localStyles.display}
                             onChange={(val) => handleStyleChange('display', val)}
+                            originalValue={originalStyles.display}
+                            onReset={() => handleReset('display')}
                             options={[
                                 { value: 'block', label: 'block' },
                                 { value: 'flex', label: 'flex' },
@@ -217,6 +341,20 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                                 { value: 'none', label: 'none' },
                             ]}
                         />
+                        <div className="grid grid-cols-2 gap-4">
+                            <SliderInput label="Width" value={localStyles.width} onChange={(val) => handleStyleChange('width', val)} originalValue={originalStyles.width} onReset={() => handleReset('width')} min={0} max={1000} allowAuto />
+                            <SliderInput label="Height" value={localStyles.height} onChange={(val) => handleStyleChange('height', val)} originalValue={originalStyles.height} onReset={() => handleReset('height')} min={0} max={1000} allowAuto />
+                        </div>
+
+                        {/* Shape Tools */}
+                        <div className="pt-2 border-t border-slate-700">
+                            <div className="mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Shapes</div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <ShapeButton label="Square" icon={Square} onClick={() => applyShape('square')} />
+                                <ShapeButton label="Rounded" icon={MousePointerClick} onClick={() => applyShape('rounded')} />
+                                <ShapeButton label="Circle" icon={Circle} onClick={() => applyShape('circle')} />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -236,20 +374,31 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                     >
                         CSS
                     </button>
-                    <button onClick={copyToClipboard} className="px-3 border-l border-slate-800 text-slate-400 hover:text-white">
-                        <Copy size={14} />
+                    <button onClick={copyToClipboard} className="px-3 border-l border-slate-800 text-slate-400 hover:text-white flex items-center gap-1.5 min-w-[70px] justify-center">
+                        {isCopied ? (
+                            <>
+                                <Check size={12} className="text-green-500" />
+                                <span className="text-[10px] text-green-500 uppercase font-bold">Copied</span>
+                            </>
+                        ) : (
+                            <>
+                                <Copy size={12} />
+                                <span className="text-[10px] uppercase font-bold">Copy</span>
+                            </>
+                        )}
                     </button>
                 </div>
-                <div className="p-4 bg-slate-950 font-mono text-xs">
-                    {codeTab === 'tailwind' ? (
-                        <code className="text-green-400 break-words block">
-                            {`<${selectedElement.tagName.toLowerCase()} class="${generatedCode}">`}
-                        </code>
-                    ) : (
-                        <code className="text-blue-300 break-words block whitespace-pre-wrap">
-                            {`${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n}`}
-                        </code>
-                    )}
+                <div className="p-4 pt-2">
+                    <div className="relative group/code">
+                        <textarea
+                            value={codeTab === 'tailwind'
+                                ? `<${selectedElement.tagName.toLowerCase()} class="${generatedCode}">`
+                                : `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n  width: ${localStyles.width};\n  height: ${localStyles.height};\n}`
+                            }
+                            readOnly={true}
+                            className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-blue-300 resize-none focus:outline-none"
+                        />
+                    </div>
                 </div>
             </div>
         </div>

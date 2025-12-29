@@ -82,9 +82,20 @@ function getElementInfo(el) {
             lineHeight: style.lineHeight
         },
         boxModel: {
-            padding: style.padding,
-            margin: style.margin,
-            borderRadius: style.borderRadius,
+            padding: {
+                top: style.paddingTop,
+                right: style.paddingRight,
+                bottom: style.paddingBottom,
+                left: style.paddingLeft
+            },
+            margin: {
+                top: style.marginTop,
+                right: style.marginRight,
+                bottom: style.marginBottom,
+                left: style.marginLeft
+            },
+            borderRadius: style.borderTopLeftRadius,
+            borderWidth: style.borderTopWidth,
             display: style.display
         },
         flexGrid: {
@@ -276,10 +287,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             document.removeEventListener('click', handleClick, { capture: true });
             lastElement = null;
         }
+    } else if (request.type === 'UPDATE_CLASSES') {
+        const { cpId, className } = request.payload;
+        const el = document.querySelector(`[data-cp-id="${cpId}"]`);
+        if (el) {
+            el.className = className;
+            lastElement = el;
+            createOverlay();
+            updateHighlight(el);
+        }
     } else if (request.type === 'UPDATE_STYLE') {
         const { cpId, styles } = request.payload;
         const el = document.querySelector(`[data-cp-id="${cpId}"]`);
-        if (el) Object.entries(styles).forEach(([p, v]) => el.style[p] = v);
+        if (el) {
+            Object.entries(styles).forEach(([p, v]) => {
+                if (typeof v === 'object' && v !== null && (p === 'padding' || p === 'margin')) {
+                    el.style[`${p}Top`] = v.top;
+                    el.style[`${p}Right`] = v.right;
+                    el.style[`${p}Bottom`] = v.bottom;
+                    el.style[`${p}Left`] = v.left;
+                } else {
+                    el.style[p] = v;
+                }
+            });
+            // Snap highlight to the element being manipulated
+            lastElement = el;
+            createOverlay();
+            updateHighlight(el);
+        }
     } else if (request.type === 'HIGHLIGHT_NODE') {
         const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
         if (el) {

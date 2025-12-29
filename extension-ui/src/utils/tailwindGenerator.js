@@ -57,6 +57,16 @@ export function generateTailwindClasses(styles) {
         if (fg.gap) classes.push(getTwSpacing(fg.gap, 'gap'));
     }
 
+    // Size
+    if (styles.width) {
+        if (styles.width === 'auto') classes.push('w-auto');
+        else classes.push(getTwSpacing(styles.width, 'w'));
+    }
+    if (styles.height) {
+        if (styles.height === 'auto') classes.push('h-auto');
+        else classes.push(getTwSpacing(styles.height, 'h'));
+    }
+
     // Typography
     if (styles.color) classes.push(getTwColor(styles.color, 'text'));
     if (styles.fontSize) classes.push(getTwSpacing(styles.fontSize, 'text').replace('text-', 'text-'));
@@ -65,8 +75,35 @@ export function generateTailwindClasses(styles) {
     if (styles.fontWeight && weightMap[styles.fontWeight]) classes.push(weightMap[styles.fontWeight]);
 
     // Spacing
-    if (styles.padding) classes.push(getTwSpacing(styles.padding, 'p'));
-    if (styles.margin) classes.push(getTwSpacing(styles.margin, 'm'));
+    const handleSpacing = (prop, prefix) => {
+        const val = styles[prop];
+        if (!val) return;
+
+        if (typeof val === 'string') {
+            classes.push(getTwSpacing(val, prefix));
+        } else if (typeof val === 'object') {
+            const { top, right, bottom, left } = val;
+            // Check for equality (All sides same)
+            if (top === right && top === bottom && top === left) {
+                if (top) classes.push(getTwSpacing(top, prefix));
+            }
+            // Check for X/Y
+            else if (top === bottom && right === left) {
+                if (top) classes.push(getTwSpacing(top, `${prefix}y`));
+                if (right) classes.push(getTwSpacing(right, `${prefix}x`));
+            }
+            // Individual
+            else {
+                if (top) classes.push(getTwSpacing(top, `${prefix}t`));
+                if (right) classes.push(getTwSpacing(right, `${prefix}r`));
+                if (bottom) classes.push(getTwSpacing(bottom, `${prefix}b`));
+                if (left) classes.push(getTwSpacing(left, `${prefix}l`));
+            }
+        }
+    };
+
+    handleSpacing('padding', 'p');
+    handleSpacing('margin', 'm');
 
     // Background
     if (styles.backgroundColor && styles.backgroundColor !== 'transparent') classes.push(getTwColor(styles.backgroundColor, 'bg'));

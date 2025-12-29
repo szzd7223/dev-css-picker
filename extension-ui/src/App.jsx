@@ -11,6 +11,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('overview')
   const [isInspectMode, setIsInspectMode] = useState(false)
   const [inspectorData, setInspectorData] = useState(null)
+  const [codeTab, setCodeTab] = useState('tailwind')
   const [error, setError] = useState(null)
 
   // Function to sync inspect mode state with the current tab
@@ -115,9 +116,12 @@ function App() {
       )}
       {activeTab === 'inspector' && (
         <InspectorTab
+          key={inspectorData?.cpId || 'no-selection'}
           selectedElement={inspectorData}
           onSelectElement={setInspectorData}
           onTabChange={handleTabChange}
+          codeTab={codeTab}
+          setCodeTab={setCodeTab}
         />
       )}
       {activeTab === 'images' && <ImagesTab />}
