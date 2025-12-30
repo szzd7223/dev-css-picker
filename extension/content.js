@@ -265,10 +265,76 @@ async function extractOverviewData() {
     };
 }
 
+// Image Discovery Logic
+function getImageUrl(el) {
+    if (el.tagName === 'IMG') return el.src;
+    const style = window.getComputedStyle(el);
+    const bgImage = style.backgroundImage;
+    if (bgImage && bgImage !== 'none') {
+        const match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+        return match ? match[1] : null;
+    }
+    return null;
+}
+
+async function extractImagesData() {
+    const images = [];
+    const elements = document.querySelectorAll('*');
+
+    elements.forEach(el => {
+        const url = getImageUrl(el);
+        if (!url || url.startsWith('data:')) return; // Skip data URLs for now to avoid bloat
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 10 || rect.height < 10) return; // Skip tiny elements
+
+        const style = window.getComputedStyle(el);
+        const isBg = el.tagName !== 'IMG';
+
+        images.push({
+            cpId: getOrAssignId(el),
+            url: url,
+            tagName: el.tagName.toLowerCase(),
+            type: isBg ? 'Background' : 'Image',
+            renderedSize: {
+                width: Math.round(rect.width),
+                height: Math.round(rect.height)
+            },
+            intrinsicSize: el.tagName === 'IMG' ? {
+                width: el.naturalWidth,
+                height: el.naturalHeight
+            } : null,
+            styles: {
+                objectFit: style.objectFit,
+                objectPosition: style.objectPosition,
+                borderRadius: style.borderRadius,
+                opacity: style.opacity,
+                overflow: style.overflow,
+                backgroundSize: style.backgroundSize,
+                backgroundPosition: style.backgroundPosition,
+                backgroundRepeat: style.backgroundRepeat
+            }
+        });
+    });
+
+    // De-duplicate by URL to keep gallery clean, but keep IDs for inspection
+    const seen = new Set();
+    return images.filter(img => {
+        if (seen.has(img.url)) return false;
+        seen.add(img.url);
+        return true;
+    });
+}
+
 // Global Message Listener
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'SCAN_PAGE') {
         extractOverviewData().then(sendResponse);
+        return true;
+    }
+
+    if (request.type === 'SCAN_IMAGES') {
+        extractImagesData().then(sendResponse);
         return true;
     }
 
@@ -325,6 +391,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     } else if (request.type === 'SELECT_NODE') {
         const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
-        if (el) { lastElement = el; sendResponse(getElementInfo(el)); }
+        if (el) {
+            const info = getElementInfo(el);
+            // Add image specific info if it's an image or has background
+            const url = getImageUrl(el);
+            if (url) {
+                const style = window.getComputedStyle(el);
+                info.imageInfo = {
+                    url,
+                    intrinsicSize: el.tagName === 'IMG' ? { width: el.naturalWidth, height: el.naturalHeight } : null,
+                    renderedSize: { width: Math.round(el.getBoundingClientRect().width), height: Math.round(el.getBoundingClientRect().height) },
+                    type: el.tagName === 'IMG' ? 'Image' : 'Background',
+                    styles: {
+                        objectFit: style.objectFit,
+                        objectPosition: style.objectPosition,
+                        borderRadius: style.borderRadius,
+                        opacity: style.opacity,
+                        backgroundSize: style.backgroundSize,
+                        backgroundPosition: style.backgroundPosition,
+                        backgroundRepeat: style.backgroundRepeat
+                    }
+                };
+            }
+            lastElement = el;
+            sendResponse(info);
+        }
     }
 });
