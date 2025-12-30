@@ -124,7 +124,13 @@ function App() {
           setCodeTab={setCodeTab}
         />
       )}
-      {activeTab === 'images' && <ImagesTab />}
+      {activeTab === 'images' && (
+        <ImagesTab
+          selectedElement={inspectorData}
+          onSelectElement={setInspectorData}
+          onTabChange={handleTabChange}
+        />
+      )}
       {activeTab === 'svgs' && <SvgsTab />}
       {activeTab === 'colors' && <ColorsTab />}
       {activeTab === 'profile' && <ProfileTab />}
