@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import SidebarLayout from './components/layout/SidebarLayout'
 import OverviewTab from './components/tabs/OverviewTab'
 import ImagesTab from './components/tabs/ImagesTab'
@@ -33,40 +33,87 @@ function App() {
     }
   }, [isInspectMode]);
 
-  // 1. Regular sync when isInspectMode changes
+  // 1. Sync when isInspectMode changes (User Toggles)
   useEffect(() => {
     syncInspectMode();
   }, [isInspectMode, syncInspectMode]);
 
-  // 2. Tab Update / Navigation Listener to re-re-sync
-  useEffect(() => {
-    const handleTabUpdated = (tabId, changeInfo, tab) => {
-      // When page reloads or navigates, we want to clear selected element 
-      // but potentially re-enable picking mode if it was active
-      if (changeInfo.status === 'complete' && tab.active) {
-        console.log("Tab reloaded, re-syncing inspect mode...");
+  // 2. Tab Lifecycle Management
+  const lastActiveTab = useRef(null);
 
-        // Clear data if URL changed significantly? Or just refresh info.
-        // For now, let's clear data because IDs will be gone.
+  useEffect(() => {
+    // A. Handle Tab Switching (Activation)
+    const handleTabActivated = (activeInfo) => {
+      // When switching tabs, we should disable inspect mode to prevent confusion
+
+      // CRITICAL FIX: Send STOP_PICKING to the *previous* tab if we know it.
+      // Otherwise, the overlay remains on that tab in the background.
+      if (lastActiveTab.current && lastActiveTab.current !== activeInfo.tabId) {
+        chrome.tabs.sendMessage(lastActiveTab.current, { type: 'STOP_PICKING' }).catch(() => { });
+      }
+
+      lastActiveTab.current = activeInfo.tabId;
+
+      setIsInspectMode(false);
+      setInspectorData(null);
+    };
+
+    // Initialize last active tab tracking
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+        if (tabs[0]?.id) lastActiveTab.current = tabs[0].id;
+      });
+    }
+
+    // B. Handle Page Reloads / Navigation (Updates)
+    const handleTabUpdated = (tabId, changeInfo, tab) => {
+      // Only act when the page is fully loaded and it is the active tab
+      if (changeInfo.status === 'complete' && tab.active) {
+        console.log("Tab updated (reload/nav), checking restore state...");
+
+        // Clear old selection data as the DOM is gone
         setInspectorData(null);
 
-        // Re-send START_PICKING if mode is active
+        // If inspect mode was active, try to re-apply it to the new page
         if (isInspectMode) {
-          // Wait a tiny bit for the script to be ready
-          setTimeout(() => syncInspectMode(tabId), 300);
+          // Retry logic to ensure content script is ready
+          let attempts = 0;
+          const maxAttempts = 5;
+          const retryInterval = 500;
+
+          const trySync = () => {
+            if (!tabId) return;
+            chrome.tabs.sendMessage(tabId, { type: 'START_PICKING' })
+              .then(() => console.log("Restored picking mode on reload"))
+              .catch(() => {
+                attempts++;
+                if (attempts < maxAttempts) {
+                  setTimeout(trySync, retryInterval);
+                } else {
+                  // If we fail too many times, just turn it off to sync UI
+                  console.warn("Failed to restore picking mode after reload");
+                  setIsInspectMode(false);
+                }
+              });
+          };
+
+          trySync();
         }
       }
     };
 
     if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.onActivated.addListener(handleTabActivated);
       chrome.tabs.onUpdated.addListener(handleTabUpdated);
     }
+
     return () => {
       if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.onActivated.removeListener(handleTabActivated);
         chrome.tabs.onUpdated.removeListener(handleTabUpdated);
       }
     };
-  }, [isInspectMode, syncInspectMode]);
+  }, [isInspectMode]);
 
   // 3. Global message listener for element selection
   useEffect(() => {

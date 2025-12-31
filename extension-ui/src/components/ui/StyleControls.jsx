@@ -177,12 +177,22 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
     const original = getObj(originalValues);
 
     // Check if separate sides are used (values differ)
+    // We use a simpler check: if any side differs from "top", then they are different.
     const areSidesDifferent =
         current.top !== current.right ||
         current.top !== current.bottom ||
         current.top !== current.left;
 
     const [isExpanded, setIsExpanded] = useState(areSidesDifferent);
+
+    // KEY FIX: Only auto-expand if sides differ. NEVER auto-collapse based on values change,
+    // as the user might want to keep it expanded while editing.
+    // Also, if the user manually expanded it, we respect that.
+    useEffect(() => {
+        if (areSidesDifferent) {
+            setIsExpanded(true);
+        }
+    }, [areSidesDifferent]); // Depend on calculation result, not the whole object
 
     const handleAllChange = (val) => {
         onChange({ top: val, right: val, bottom: val, left: val });
@@ -198,8 +208,8 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                 <label className="text-xs font-medium text-slate-400 uppercase flex items-center gap-2">
                     {label}
                     <button
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="p-1 hover:bg-slate-700 rounded text-slate-500 hover:text-blue-400 transition-colors"
+                        onClick={() => setIsExpanded(prev => !prev)}
+                        className={`p-1 rounded transition-colors ${isExpanded ? 'bg-slate-700 text-blue-400' : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'}`}
                         title={isExpanded ? "Collapse to single value" : "Expand to 4 sides"}
                     >
                         {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}

@@ -42,6 +42,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
             padding: cleanPx(selectedElement.boxModel.padding),
             margin: cleanPx(selectedElement.boxModel.margin),
             borderWidth: cleanPx(selectedElement.boxModel.borderWidth),
+            borderStyle: selectedElement.boxModel.borderStyle || 'solid',
             borderColor: selectedElement.colors.border || 'transparent',
             display: selectedElement.boxModel.display,
             width: selectedElement.width + 'px',
@@ -77,6 +78,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                 padding: cleanPx(selectedElement.boxModel.padding),
                 margin: cleanPx(selectedElement.boxModel.margin),
                 borderWidth: cleanPx(selectedElement.boxModel.borderWidth),
+                borderStyle: selectedElement.boxModel.borderStyle || 'solid',
                 borderColor: selectedElement.colors.border || 'transparent',
                 display: selectedElement.boxModel.display,
                 width: selectedElement.width + 'px',
@@ -294,6 +296,28 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             onChange={(val) => handleStyleChange('backgroundColor', val)}
                             originalValue={originalStyles.backgroundColor}
                             onReset={() => handleReset('backgroundColor')}
+                        />
+                        <SliderInput
+                            label="Border Width"
+                            value={localStyles.borderWidth}
+                            onChange={(val) => handleStyleChange('borderWidth', val)}
+                            originalValue={originalStyles.borderWidth}
+                            onReset={() => handleReset('borderWidth')}
+                            min={0} max={20}
+                        />
+                        <SelectInput
+                            label="Border Style"
+                            value={localStyles.borderStyle}
+                            onChange={(val) => handleStyleChange('borderStyle', val)}
+                            originalValue={originalStyles.borderStyle}
+                            onReset={() => handleReset('borderStyle')}
+                            options={[
+                                { value: 'solid', label: 'Solid' },
+                                { value: 'dashed', label: 'Dashed' },
+                                { value: 'dotted', label: 'Dotted' },
+                                { value: 'double', label: 'Double' },
+                                { value: 'none', label: 'None' },
+                            ]}
                         />
                         <ColorInput
                             label="Border Color"
