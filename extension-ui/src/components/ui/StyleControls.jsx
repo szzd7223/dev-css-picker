@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
+import { RotateCcw, ChevronDown, Maximize2, Minimize2, Equal } from 'lucide-react';
 
 export const ColorInput = ({ label, value, onChange, originalValue, onReset }) => {
     const isChanged = originalValue !== undefined && value !== originalValue;
@@ -206,28 +206,38 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                     {label}
                 </label>
 
-                {/* Toggle Button moved outside Label to prevent event issues */}
-                {/* Only allow Collapsing if sides are NOT different. 
-                    If they differ, we lock to expanded to prevent hiding data. */}
-                <button
-                    onClick={() => setUserWantsExpanded(!userWantsExpanded)}
-                    disabled={areSidesDifferent}
-                    className={`p-1 rounded transition-colors ${areSidesDifferent
-                            ? 'opacity-50 cursor-not-allowed text-slate-600'
+                <div className="flex items-center gap-1">
+                    {areSidesDifferent && (
+                        <button
+                            onClick={() => handleAllChange(current.top)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
+                            title="Make all sides equal to Top value"
+                        >
+                            <Equal size={10} />
+                            <span>Make Even</span>
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => setUserWantsExpanded(!userWantsExpanded)}
+                        disabled={areSidesDifferent}
+                        className={`p-1 rounded transition-colors ${areSidesDifferent
+                            ? 'opacity-30 cursor-not-allowed text-slate-600'
                             : isExpanded
                                 ? 'bg-slate-700 text-blue-400'
                                 : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'
-                        }`}
-                    title={
-                        areSidesDifferent
-                            ? "Cannot collapse mixed values"
-                            : isExpanded
-                                ? "Collapse to single value"
-                                : "Expand to 4 sides"
-                    }
-                >
-                    {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                </button>
+                            }`}
+                        title={
+                            areSidesDifferent
+                                ? "Make even to collapse"
+                                : isExpanded
+                                    ? "Collapse to single value"
+                                    : "Expand to 4 sides"
+                        }
+                    >
+                        {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    </button>
+                </div>
             </div>
 
             {isExpanded ? (
