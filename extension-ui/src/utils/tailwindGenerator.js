@@ -109,7 +109,36 @@ export function generateTailwindClasses(styles) {
     if (styles.backgroundColor && styles.backgroundColor !== 'transparent') classes.push(getTwColor(styles.backgroundColor, 'bg'));
 
     // Border
-    if (styles.borderRadius) classes.push(getTwSpacing(styles.borderRadius, 'rounded').replace('rounded-', 'rounded-'));
+    // Border
+    if (styles.borderRadius) {
+        const val = styles.borderRadius;
+        if (typeof val === 'string') {
+            classes.push(getTwSpacing(val, 'rounded').replace('rounded-', 'rounded-'));
+        } else if (typeof val === 'object') {
+            const { topLeft, topRight, bottomRight, bottomLeft } = val;
+            // All same
+            if (topLeft === topRight && topLeft === bottomRight && topLeft === bottomLeft) {
+                if (topLeft && topLeft !== '0px') classes.push(getTwSpacing(topLeft, 'rounded').replace('rounded-', 'rounded-'));
+            }
+            // Top/Bottom (e.g. rounded-t-lg)
+            else if (topLeft === topRight && bottomLeft === bottomRight && topLeft !== bottomLeft) {
+                if (topLeft && topLeft !== '0px') classes.push(getTwSpacing(topLeft, 'rounded-t'));
+                if (bottomLeft && bottomLeft !== '0px') classes.push(getTwSpacing(bottomLeft, 'rounded-b'));
+            }
+            // Left/Right
+            else if (topLeft === bottomLeft && topRight === bottomRight && topLeft !== topRight) {
+                if (topLeft && topLeft !== '0px') classes.push(getTwSpacing(topLeft, 'rounded-l'));
+                if (topRight && topRight !== '0px') classes.push(getTwSpacing(topRight, 'rounded-r'));
+            }
+            // Individual
+            else {
+                if (topLeft && topLeft !== '0px') classes.push(getTwSpacing(topLeft, 'rounded-tl'));
+                if (topRight && topRight !== '0px') classes.push(getTwSpacing(topRight, 'rounded-tr'));
+                if (bottomRight && bottomRight !== '0px') classes.push(getTwSpacing(bottomRight, 'rounded-br'));
+                if (bottomLeft && bottomLeft !== '0px') classes.push(getTwSpacing(bottomLeft, 'rounded-bl'));
+            }
+        }
+    }
     if (styles.borderWidth && styles.borderWidth !== '0px') classes.push(`border-[${styles.borderWidth}]`);
     if (styles.borderColor) classes.push(getTwColor(styles.borderColor, 'border'));
 

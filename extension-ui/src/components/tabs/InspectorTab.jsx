@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Type, Palette, Box, Copy, Code, Layers, ArrowLeft, RefreshCw, ChevronDown, ChevronRight, Check, Play, Circle, Square, MousePointerClick } from 'lucide-react';
 import DomTree from './DomTree';
-import { ColorInput, SliderInput, SelectInput, SpacingInput } from '../ui/StyleControls';
+import { ColorInput, SliderInput, SelectInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
 import { generateTailwindClasses } from '../../utils/tailwindGenerator';
 
 const ShapeButton = ({ onClick, icon: Icon, label, active }) => (
@@ -15,33 +15,41 @@ const ShapeButton = ({ onClick, icon: Icon, label, active }) => (
     </button>
 );
 
+// Utility to clean style values
+const cleanStyleValue = (val) => {
+    if (typeof val === 'object' && val !== null) {
+        const out = {};
+        for (const k in val) out[k] = cleanStyleValue(val[k]);
+        return out;
+    }
+    if (!val || val === 'none' || val === 'auto') return val;
+    // Keep original units if possible, just round if it's pixels
+    if (String(val).endsWith('px')) {
+        const parsed = parseFloat(val);
+        if (!isNaN(parsed) && isFinite(parsed)) {
+            // Cap extremely large values (often used for pill shapes) to 9999px to avoid UI glitches
+            if (parsed > 10000) return '9999px';
+            return `${Math.round(parsed)}px`;
+        }
+    }
+    return val;
+};
+
 export default function InspectorTab({ selectedElement, onSelectElement, onTabChange, codeTab, setCodeTab }) {
     const [error, setError] = useState(null);
     const [originalStyles, setOriginalStyles] = useState({});
     const [localStyles, setLocalStyles] = useState(() => {
         if (!selectedElement) return {};
-        const cleanPx = (val) => {
-            if (typeof val === 'object' && val !== null) {
-                const out = {};
-                for (const k in val) out[k] = cleanPx(val[k]);
-                return out;
-            }
-            if (!val || val === 'none' || val === 'auto') return val;
-            const parsed = parseFloat(val);
-            if (isNaN(parsed) || !isFinite(parsed)) return '0px';
-            if (parsed > 10000) return '0px'; // Sanity check for weird browser values
-            return `${Math.round(parsed)}px`;
-        };
 
         return {
             color: selectedElement.colors.text,
             backgroundColor: selectedElement.colors.background,
             fontSize: selectedElement.typography.size,
             fontWeight: selectedElement.typography.weight,
-            borderRadius: cleanPx(selectedElement.boxModel.borderRadius),
-            padding: cleanPx(selectedElement.boxModel.padding),
-            margin: cleanPx(selectedElement.boxModel.margin),
-            borderWidth: cleanPx(selectedElement.boxModel.borderWidth),
+            borderRadius: cleanStyleValue(selectedElement.boxModel.borderRadius),
+            padding: cleanStyleValue(selectedElement.boxModel.padding),
+            margin: cleanStyleValue(selectedElement.boxModel.margin),
+            borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
             borderStyle: selectedElement.boxModel.borderStyle || 'solid',
             borderColor: selectedElement.colors.border || 'transparent',
             display: selectedElement.boxModel.display,
@@ -69,15 +77,41 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                 return `${Math.round(parsed)}px`;
             };
 
+
+            // Special helper for radius to clamp "pill hacks" (e.g. 9999px) to the actual visual limit
+            const effectiveMaxRadius = Math.max(0, Math.round(Math.min(selectedElement.width, selectedElement.height) / 2));
+
+            const cleanRadius = (val) => {
+                if (typeof val === 'object' && val !== null) {
+                    const out = {};
+                    for (const k in val) out[k] = cleanRadius(val[k]);
+                    return out;
+                }
+
+                // If it's a pixel value, check if it exceeds the effective max
+                if (String(val).endsWith('px')) {
+                    const parsed = parseFloat(val);
+                    if (!isNaN(parsed) && isFinite(parsed)) {
+                        // If it's effectively a pill (larger than half size), clamp it to half size
+                        // This allows the slider to be useful immediately (sliding down from max)
+                        if (effectiveMaxRadius > 0 && parsed > effectiveMaxRadius) {
+                            return `${effectiveMaxRadius}px`;
+                        }
+                        return `${Math.round(parsed)}px`;
+                    }
+                }
+                return cleanStyleValue(val);
+            };
+
             const initialState = {
                 color: selectedElement.colors.text,
                 backgroundColor: selectedElement.colors.background,
                 fontSize: selectedElement.typography.size,
                 fontWeight: selectedElement.typography.weight,
-                borderRadius: cleanPx(selectedElement.boxModel.borderRadius),
-                padding: cleanPx(selectedElement.boxModel.padding),
-                margin: cleanPx(selectedElement.boxModel.margin),
-                borderWidth: cleanPx(selectedElement.boxModel.borderWidth),
+                borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
+                padding: cleanStyleValue(selectedElement.boxModel.padding),
+                margin: cleanStyleValue(selectedElement.boxModel.margin),
+                borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
                 borderStyle: selectedElement.boxModel.borderStyle || 'solid',
                 borderColor: selectedElement.colors.border || 'transparent',
                 display: selectedElement.boxModel.display,
@@ -87,6 +121,8 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
 
             setOriginalStyles(initialState);
             setLocalStyles(initialState);
+            // Debug check
+            console.log('Inspector Data', initialState.borderRadius);
         }
     }, [selectedElement]);
 
@@ -352,7 +388,17 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             originalValues={originalStyles.margin}
                             onReset={() => handleReset('margin')}
                         />
-                        <SliderInput label="Radius" value={localStyles.borderRadius} onChange={(val) => handleStyleChange('borderRadius', val)} originalValue={originalStyles.borderRadius} onReset={() => handleReset('borderRadius')} min={0} max={50} />
+                        <RadiusInput
+                            label="Radius"
+                            values={localStyles.borderRadius}
+                            onChange={(val) => handleStyleChange('borderRadius', val)}
+                            originalValues={originalStyles.borderRadius}
+                            onReset={() => handleReset('borderRadius')}
+                            max={Math.max(50, Math.round(Math.min(
+                                parseFloat(localStyles.width) || selectedElement.width || 0,
+                                parseFloat(localStyles.height) || selectedElement.height || 0
+                            ) / 2))}
+                        />
                         <SelectInput
                             label="Display"
                             value={localStyles.display}

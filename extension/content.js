@@ -94,7 +94,12 @@ function getElementInfo(el) {
                 bottom: style.marginBottom,
                 left: style.marginLeft
             },
-            borderRadius: style.borderTopLeftRadius,
+            borderRadius: {
+                topLeft: style.borderTopLeftRadius,
+                topRight: style.borderTopRightRadius,
+                bottomRight: style.borderBottomRightRadius,
+                bottomLeft: style.borderBottomLeftRadius
+            },
             borderWidth: style.borderTopWidth,
             display: style.display
         },
@@ -367,11 +372,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const el = document.querySelector(`[data-cp-id="${cpId}"]`);
         if (el) {
             Object.entries(styles).forEach(([p, v]) => {
-                if (typeof v === 'object' && v !== null && (p === 'padding' || p === 'margin')) {
-                    el.style[`${p}Top`] = v.top;
-                    el.style[`${p}Right`] = v.right;
-                    el.style[`${p}Bottom`] = v.bottom;
-                    el.style[`${p}Left`] = v.left;
+                if (typeof v === 'object' && v !== null && (p === 'padding' || p === 'margin' || p === 'borderRadius')) {
+                    if (p === 'borderRadius') {
+                        el.style.borderTopLeftRadius = v.topLeft;
+                        el.style.borderTopRightRadius = v.topRight;
+                        el.style.borderBottomRightRadius = v.bottomRight;
+                        el.style.borderBottomLeftRadius = v.bottomLeft;
+                    } else {
+                        el.style[`${p}Top`] = v.top;
+                        el.style[`${p}Right`] = v.right;
+                        el.style[`${p}Bottom`] = v.bottom;
+                        el.style[`${p}Left`] = v.left;
+                    }
                 } else {
                     el.style[p] = v;
                 }

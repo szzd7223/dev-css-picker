@@ -50,6 +50,7 @@ const UNITS = ['px', '%', 'rem', 'em', 'vw', 'vh'];
 
 const parseValue = (val) => {
     if (!val || val === 'auto') return { num: 0, unit: 'px', isAuto: true };
+    if (typeof val === 'number') return { num: val, unit: 'px', isAuto: false };
     const match = String(val).match(/^([\d.-]+)([a-z%]*)$/);
     if (!match) return { num: 0, unit: 'px', isAuto: false }; // fallback
     return {
@@ -283,6 +284,135 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                     originalValue={original.top}
                     onReset={() => onChange(original)}
                     min={0} max={100}
+                />
+            )}
+        </div>
+    );
+};
+
+export const RadiusInput = ({ label, values, onChange, originalValues, onReset, max = 100 }) => {
+    // values is object { topLeft, topRight, bottomRight, bottomLeft } or string (if previously single)
+    const getObj = (val) => {
+        if (typeof val === 'string') return { topLeft: val, topRight: val, bottomRight: val, bottomLeft: val };
+        // Handle case where val is object but missing keys (e.g. initial load)
+        const v = val || {};
+        return {
+            topLeft: v.topLeft || '0px',
+            topRight: v.topRight || '0px',
+            bottomRight: v.bottomRight || '0px',
+            bottomLeft: v.bottomLeft || '0px'
+        };
+    };
+
+    const current = getObj(values);
+    const original = getObj(originalValues);
+
+    const norm = (v) => String(v).trim();
+    const parseNum = (v) => parseFloat(v) || 0;
+
+    const areCornersDifferent =
+        norm(current.topLeft) !== norm(current.topRight) ||
+        norm(current.topLeft) !== norm(current.bottomRight) ||
+        norm(current.topLeft) !== norm(current.bottomLeft);
+
+    const [userWantsExpanded, setUserWantsExpanded] = useState(false);
+
+    // Default to collapsed unless user explicitly expands, to fulfill "single slider" request.
+    // However, if they are different, we might want to alert, but user asked for "put slider to value".
+    const isExpanded = userWantsExpanded;
+
+    // Determine representative value (Max of corners)
+    const maxValue = Math.max(
+        parseNum(current.topLeft),
+        parseNum(current.topRight),
+        parseNum(current.bottomRight),
+        parseNum(current.bottomLeft)
+    );
+
+    // We keep the unit from the first non-zero corner, or default to px
+    const getUnit = (v) => {
+        const match = String(v).match(/[a-z%]+$/);
+        return match ? match[0] : 'px';
+    };
+    const representativeUnit = getUnit(current.topLeft) || getUnit(current.topRight) || 'px';
+    const representativeValue = `${maxValue}${representativeUnit}`;
+
+    const handleAllChange = (val) => {
+        onChange({ topLeft: val, topRight: val, bottomRight: val, bottomLeft: val });
+    };
+
+    const handleCornerChange = (corner, val) => {
+        onChange({ ...current, [corner]: val });
+    };
+
+    return (
+        <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 mb-3">
+            <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-400 uppercase flex items-center gap-2">
+                    {label}
+                    {areCornersDifferent && !isExpanded && (
+                        <span className="text-[9px] bg-slate-700 px-1.5 py-0.5 rounded text-blue-300 ml-1">Mixed</span>
+                    )}
+                </label>
+
+                <div className="flex items-center gap-1">
+                    {areCornersDifferent && isExpanded && (
+                        <button
+                            onClick={() => handleAllChange(representativeValue)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
+                            title="Sync all to max value"
+                        >
+                            <Equal size={10} />
+                            <span>Sync</span>
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => setUserWantsExpanded(!userWantsExpanded)}
+                        className={`p-1 rounded transition-colors ${isExpanded
+                            ? 'bg-slate-700 text-blue-400'
+                            : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'
+                            }`}
+                        title={isExpanded ? "Collapse" : "Expand individual corners"}
+                    >
+                        {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    </button>
+                </div>
+            </div>
+
+            {isExpanded ? (
+                <div className="grid grid-cols-2 gap-x-4">
+                    <SliderInput
+                        label="Top-Left"
+                        value={current.topLeft}
+                        onChange={(v) => handleCornerChange('topLeft', v)}
+                        min={0} max={max}
+                    />
+                    <SliderInput
+                        label="Top-Right"
+                        value={current.topRight}
+                        onChange={(v) => handleCornerChange('topRight', v)}
+                        min={0} max={max}
+                    />
+                    <SliderInput
+                        label="Btm-Right"
+                        value={current.bottomRight}
+                        onChange={(v) => handleCornerChange('bottomRight', v)}
+                        min={0} max={max}
+                    />
+                    <SliderInput
+                        label="Btm-Left"
+                        value={current.bottomLeft}
+                        onChange={(v) => handleCornerChange('bottomLeft', v)}
+                        min={0} max={max}
+                    />
+                </div>
+            ) : (
+                <SliderInput
+                    label={null}
+                    value={representativeValue}
+                    onChange={handleAllChange}
+                    min={0} max={max}
                 />
             )}
         </div>
