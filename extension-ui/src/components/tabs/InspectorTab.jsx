@@ -337,6 +337,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                     </div>
                     <div className="p-4 space-y-4">
                         <SpacingInput
+                            key={`${selectedElement.cpId}-padding`}
                             label="Padding"
                             values={localStyles.padding}
                             onChange={(val) => handleStyleChange('padding', val)}
@@ -344,6 +345,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             onReset={() => handleReset('padding')}
                         />
                         <SpacingInput
+                            key={`${selectedElement.cpId}-margin`}
                             label="Margin"
                             values={localStyles.margin}
                             onChange={(val) => handleStyleChange('margin', val)}

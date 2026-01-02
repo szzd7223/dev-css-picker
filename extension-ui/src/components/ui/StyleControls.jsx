@@ -167,7 +167,6 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 // New Component for handling Padding/Margin (All sides or Separate)
 export const SpacingInput = ({ label, values, onChange, originalValues, onReset }) => {
     // values is object { top, right, bottom, left } or string (if previously single)
-    // Convert to object if string
     const getObj = (val) => {
         if (typeof val === 'string') return { top: val, right: val, bottom: val, left: val };
         return val || { top: '0px', right: '0px', bottom: '0px', left: '0px' };
@@ -176,23 +175,21 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
     const current = getObj(values);
     const original = getObj(originalValues);
 
-    // Check if separate sides are used (values differ)
-    // We use a simpler check: if any side differs from "top", then they are different.
+    // Normalize for comparison to avoid '10px' vs '10px ' issues
+    const norm = (v) => String(v).trim();
+
+    // SINGLE SOURCE OF TRUTH: Data drives the state.
+    // If sides are different, we MUST show expanded view to represent truth.
     const areSidesDifferent =
-        current.top !== current.right ||
-        current.top !== current.bottom ||
-        current.top !== current.left;
+        norm(current.top) !== norm(current.right) ||
+        norm(current.top) !== norm(current.bottom) ||
+        norm(current.top) !== norm(current.left);
 
-    const [isExpanded, setIsExpanded] = useState(areSidesDifferent);
+    // User can opt-in to see expanded view even if sides are the same
+    const [userWantsExpanded, setUserWantsExpanded] = useState(false);
 
-    // KEY FIX: Only auto-expand if sides differ. NEVER auto-collapse based on values change,
-    // as the user might want to keep it expanded while editing.
-    // Also, if the user manually expanded it, we respect that.
-    useEffect(() => {
-        if (areSidesDifferent) {
-            setIsExpanded(true);
-        }
-    }, [areSidesDifferent]); // Depend on calculation result, not the whole object
+    // Final state is a derivation
+    const isExpanded = areSidesDifferent || userWantsExpanded;
 
     const handleAllChange = (val) => {
         onChange({ top: val, right: val, bottom: val, left: val });
@@ -207,14 +204,30 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
             <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium text-slate-400 uppercase flex items-center gap-2">
                     {label}
-                    <button
-                        onClick={() => setIsExpanded(prev => !prev)}
-                        className={`p-1 rounded transition-colors ${isExpanded ? 'bg-slate-700 text-blue-400' : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'}`}
-                        title={isExpanded ? "Collapse to single value" : "Expand to 4 sides"}
-                    >
-                        {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                    </button>
                 </label>
+
+                {/* Toggle Button moved outside Label to prevent event issues */}
+                {/* Only allow Collapsing if sides are NOT different. 
+                    If they differ, we lock to expanded to prevent hiding data. */}
+                <button
+                    onClick={() => setUserWantsExpanded(!userWantsExpanded)}
+                    disabled={areSidesDifferent}
+                    className={`p-1 rounded transition-colors ${areSidesDifferent
+                            ? 'opacity-50 cursor-not-allowed text-slate-600'
+                            : isExpanded
+                                ? 'bg-slate-700 text-blue-400'
+                                : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'
+                        }`}
+                    title={
+                        areSidesDifferent
+                            ? "Cannot collapse mixed values"
+                            : isExpanded
+                                ? "Collapse to single value"
+                                : "Expand to 4 sides"
+                    }
+                >
+                    {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
             </div>
 
             {isExpanded ? (

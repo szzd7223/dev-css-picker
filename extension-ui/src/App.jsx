@@ -14,20 +14,33 @@ function App() {
   const [codeTab, setCodeTab] = useState('tailwind')
   const [error, setError] = useState(null)
 
+  // Track specifically which tab we are currently picking on
+  const pickingTabId = useRef(null);
+
   // Function to sync inspect mode state with the current tab
   const syncInspectMode = useCallback((tabId, forceState) => {
     const targetState = forceState !== undefined ? forceState : isInspectMode;
     const type = targetState ? 'START_PICKING' : 'STOP_PICKING';
 
-    if (tabId) {
-      chrome.tabs.sendMessage(tabId, { type }).catch(err => {
-        // This is expected if content script isn't ready yet
-        console.warn("Sync failed for tab", tabId, err);
+    const sendMessage = (tid) => {
+      chrome.tabs.sendMessage(tid, { type }).catch(err => {
+        console.warn("Sync failed for tab", tid, err);
       });
+
+      // Update our tracking ref
+      if (targetState) {
+        pickingTabId.current = tid;
+      } else if (pickingTabId.current === tid) {
+        pickingTabId.current = null;
+      }
+    };
+
+    if (tabId) {
+      sendMessage(tabId);
     } else {
       chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { type }).catch(() => { });
+          sendMessage(tabs[0].id);
         }
       });
     }
@@ -39,31 +52,22 @@ function App() {
   }, [isInspectMode, syncInspectMode]);
 
   // 2. Tab Lifecycle Management
-  const lastActiveTab = useRef(null);
-
   useEffect(() => {
     // A. Handle Tab Switching (Activation)
     const handleTabActivated = (activeInfo) => {
-      // When switching tabs, we should disable inspect mode to prevent confusion
-
-      // CRITICAL FIX: Send STOP_PICKING to the *previous* tab if we know it.
-      // Otherwise, the overlay remains on that tab in the background.
-      if (lastActiveTab.current && lastActiveTab.current !== activeInfo.tabId) {
-        chrome.tabs.sendMessage(lastActiveTab.current, { type: 'STOP_PICKING' }).catch(() => { });
+      // CRITICAL FIX: Explicitly stop picking on the tab we were tracking, 
+      // regardless of whether it was the "last active" one or not.
+      if (pickingTabId.current && pickingTabId.current !== activeInfo.tabId) {
+        chrome.tabs.sendMessage(pickingTabId.current, { type: 'STOP_PICKING' }).catch(() => { });
+        pickingTabId.current = null;
       }
 
-      lastActiveTab.current = activeInfo.tabId;
+      // Also ensure the new tab is clean
+      chrome.tabs.sendMessage(activeInfo.tabId, { type: 'STOP_PICKING' }).catch(() => { });
 
       setIsInspectMode(false);
       setInspectorData(null);
     };
-
-    // Initialize last active tab tracking
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
-      chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-        if (tabs[0]?.id) lastActiveTab.current = tabs[0].id;
-      });
-    }
 
     // B. Handle Page Reloads / Navigation (Updates)
     const handleTabUpdated = (tabId, changeInfo, tab) => {
