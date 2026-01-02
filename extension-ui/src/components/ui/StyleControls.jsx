@@ -115,10 +115,28 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                     )}
 
                     {/* Value Display & Unit Selector */}
-                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5">
-                        <span className="text-xs font-mono font-bold text-slate-200 mr-1 min-w-[20px] text-right">
-                            {isAuto ? '-' : num}
-                        </span>
+                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 focus-within:border-blue-500/50 transition-colors">
+                        {isAuto ? (
+                            <span className="text-xs font-mono font-bold text-slate-500 mr-1 min-w-[20px] text-right">-</span>
+                        ) : (
+                            <input
+                                type="text"
+                                value={num}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    // Allow empty or minus sign for typing, but parse for valid numbers
+                                    if (val === '' || val === '-') {
+                                        onChange(`${val}${unit}`);
+                                        return;
+                                    }
+                                    const parsed = parseFloat(val);
+                                    if (!isNaN(parsed)) {
+                                        onChange(`${val}${unit}`);
+                                    }
+                                }}
+                                className="w-10 text-xs font-mono font-bold text-slate-200 bg-transparent border-none p-0 text-right outline-none focus:ring-0 appearance-none"
+                            />
+                        )}
                         {!isAuto && (
                             <div className="relative">
                                 <button
