@@ -9,18 +9,36 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 // Detect side panel closure
+let activeConnections = 0;
+let disconnectTimeout = null;
+
 chrome.runtime.onConnect.addListener((port) => {
     if (port.name === 'sidepanel-connection') {
+        activeConnections++;
+        if (disconnectTimeout) {
+            clearTimeout(disconnectTimeout);
+            disconnectTimeout = null;
+        }
+        console.log(`Connection established. Active connections: ${activeConnections}`);
+
         port.onDisconnect.addListener(() => {
-            console.log('Sidebar closed, stopping picker...');
-            // Notify the active tab to stop picking
-            chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-                if (tabs[0]?.id) {
-                    chrome.tabs.sendMessage(tabs[0].id, { type: 'STOP_PICKING' }).catch(() => {
-                        // Ignore if content script isn't there
+            activeConnections--;
+            console.log(`Connection closed. Active connections: ${activeConnections}`);
+
+            if (activeConnections <= 0) {
+                activeConnections = 0;
+                // Add a small delay before stopping to allow for view switching (e.g. Side Panel -> Pop Out)
+                disconnectTimeout = setTimeout(() => {
+                    console.log('All views closed and timeout expired, stopping picker...');
+                    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+                        if (tabs[0]?.id) {
+                            chrome.tabs.sendMessage(tabs[0].id, { type: 'STOP_PICKING' }).catch(() => {
+                                // Ignore if content script isn't there
+                            });
+                        }
                     });
-                }
-            });
+                }, 1000);
+            }
         });
     }
 });

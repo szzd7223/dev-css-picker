@@ -376,7 +376,7 @@ async function extractAssetsData() {
     });
 }
 
-// Global Message Listener
+// Global Message Listener Update
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'SCAN_PAGE') {
         extractOverviewData().then(sendResponse);

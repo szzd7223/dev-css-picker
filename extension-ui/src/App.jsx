@@ -149,12 +149,65 @@ function App() {
     setIsInspectMode(prev => !prev);
   };
 
+  // Viewport Resizer Logic
+  const getTargetTab = (cb) => {
+    if (pickingTabId.current) cb(pickingTabId.current);
+    else chrome.tabs.query({ active: true, lastFocusedWindow: true }, t => t[0]?.id && cb(t[0].id));
+  };
+
+  const handleViewportChange = (size) => {
+    getTargetTab((tid) => {
+      if (!tid) return;
+      chrome.tabs.get(tid, (tab) => {
+        if (tab && tab.windowId) {
+          let updates = { state: 'normal' };
+
+          // Detect if we are currently running in the Sidebar (not Popout)
+          // Since Popout is removed, we are always in Sidebar.
+
+          // If in Sidebar Mode, we need to account for the Side Panel width taking up space in the browser window.
+          // We can't know the exact Side Panel width, but we'll assume a generous buffer (e.g. 400px) + Chrome UI padding.
+          const sidebarBuffer = 500; // Increased buffer to be safe
+
+          chrome.windows.get(tab.windowId, (win) => {
+            // Standard Dimensions:
+            // Mobile (iPhone 14 Pro): 393 x 852
+            // Tablet (iPad mini): 744 x 1133
+            // Desktop: 1440 x 900
+
+            switch (size) {
+              case 'mobile':
+                updates.width = 393 + 16 + sidebarBuffer;
+                updates.height = 852 + 88;
+                break;
+              case 'tablet':
+                updates.width = 744 + 16 + sidebarBuffer;
+                updates.height = 1133 + 88;
+                break;
+              case 'desktop':
+                updates.width = 1440 + sidebarBuffer;
+                updates.height = 900;
+                break;
+              case 'reset':
+                updates = { state: 'maximized' };
+                break;
+              default:
+                return;
+            }
+            chrome.windows.update(tab.windowId, updates);
+          });
+        }
+      });
+    });
+  };
+
   return (
     <SidebarLayout
       activeTab={activeTab}
       onTabChange={handleTabChange}
       isInspectMode={isInspectMode}
       onToggleInspect={handleToggleInspect}
+      onViewportChange={handleViewportChange}
     >
       {activeTab === 'overview' && (
         <OverviewTab
@@ -163,27 +216,32 @@ function App() {
           selectedElement={inspectorData}
           onSelectElement={setInspectorData}
         />
-      )}
-      {activeTab === 'inspector' && (
-        <InspectorTab
-          key={inspectorData?.cpId || 'no-selection'}
-          selectedElement={inspectorData}
-          onSelectElement={setInspectorData}
-          onTabChange={handleTabChange}
-          codeTab={codeTab}
-          setCodeTab={setCodeTab}
-        />
-      )}
-      {activeTab === 'assets' && (
-        <AssetsTab
-          selectedElement={inspectorData}
-          onSelectElement={setInspectorData}
-          onTabChange={handleTabChange}
-        />
-      )}
+      )
+      }
+      {
+        activeTab === 'inspector' && (
+          <InspectorTab
+            key={inspectorData?.cpId || 'no-selection'}
+            selectedElement={inspectorData}
+            onSelectElement={setInspectorData}
+            onTabChange={handleTabChange}
+            codeTab={codeTab}
+            setCodeTab={setCodeTab}
+          />
+        )
+      }
+      {
+        activeTab === 'assets' && (
+          <AssetsTab
+            selectedElement={inspectorData}
+            onSelectElement={setInspectorData}
+            onTabChange={handleTabChange}
+          />
+        )
+      }
       {activeTab === 'colors' && <ColorsTab />}
       {activeTab === 'profile' && <ProfileTab />}
-    </SidebarLayout>
+    </SidebarLayout >
   )
 }
 
