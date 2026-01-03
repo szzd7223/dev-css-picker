@@ -103,13 +103,26 @@ function getElementInfo(el) {
             borderWidth: style.borderTopWidth,
             display: style.display
         },
+        positioning: {
+            position: style.position,
+            top: style.top,
+            right: style.right,
+            bottom: style.bottom,
+            left: style.left,
+            zIndex: style.zIndex
+        },
         flexGrid: {
             display: style.display,
             flexDirection: style.flexDirection,
+            flexWrap: style.flexWrap,
             justifyContent: style.justifyContent,
             alignItems: style.alignItems,
+            alignContent: style.alignContent,
             gap: style.gap,
-            gridTemplateColumns: style.gridTemplateColumns
+            rowGap: style.rowGap,
+            columnGap: style.columnGap,
+            gridTemplateColumns: style.gridTemplateColumns,
+            gridTemplateRows: style.gridTemplateRows
         },
         hierarchy: getShallowHierarchy(el)
     };
