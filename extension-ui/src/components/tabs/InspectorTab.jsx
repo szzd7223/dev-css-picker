@@ -1,62 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { Type, Palette, Box, Copy, Code, Layers, ArrowLeft, RefreshCw, ChevronDown, ChevronRight, Check, Play, Circle, Square, MousePointerClick, Move, LayoutGrid } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Box, Type, Palette, Move, Layers, Code, Square, MousePointerClick, Circle, Check, Copy, ArrowLeft, RefreshCw } from 'lucide-react';
+import { SliderInput, SelectInput, ColorInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
 import DomTree from './DomTree';
-import { ColorInput, SliderInput, SelectInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
-import { generateTailwindClasses } from '../../utils/tailwindGenerator';
+import { cleanStyleValue, generateTailwindClasses } from '../../utils/styleUtils';
+import { parseGradient, buildGradientString } from '../../utils/gradientParser';
 
-const ShapeButton = ({ onClick, icon: Icon, label, active }) => (
+const ShapeButton = ({ label, icon: Icon, onClick }) => (
     <button
         onClick={onClick}
-        className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-all border ${active ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}
-        title={label}
+        className="flex flex-col items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-transparent hover:border-slate-600 transition-all gap-1 group"
     >
-        <Icon size={16} />
-        <span className="text-[10px] font-medium">{label}</span>
+        <Icon size={16} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
+        <span className="text-[10px] text-slate-500 group-hover:text-slate-300 font-medium">{label}</span>
     </button>
 );
 
-// Utility to clean style values
-const cleanStyleValue = (val) => {
-    if (typeof val === 'object' && val !== null) {
-        const out = {};
-        for (const k in val) out[k] = cleanStyleValue(val[k]);
-        return out;
-    }
-    if (!val || val === 'none' || val === 'auto') return val;
-    // Keep original units if possible, just round if it's pixels
-    if (String(val).endsWith('px')) {
-        const parsed = parseFloat(val);
-        if (!isNaN(parsed) && isFinite(parsed)) {
-            // Cap extremely large values (often used for pill shapes) to 9999px to avoid UI glitches
-            if (parsed > 10000) return '9999px';
-            return `${Math.round(parsed)}px`;
-        }
-    }
-    return val;
-};
-
-export default function InspectorTab({ selectedElement, onSelectElement, onTabChange, codeTab, setCodeTab }) {
-    const [error, setError] = useState(null);
+export default function InspectorTab({ selectedElement, onSelectElement, onTabChange }) {
+    const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
-    const [localStyles, setLocalStyles] = useState(() => {
-        if (!selectedElement) return {};
-
-        return {
-            color: selectedElement.colors.text,
-            backgroundColor: selectedElement.colors.background,
-            fontSize: selectedElement.typography.size,
-            fontWeight: selectedElement.typography.weight,
-            borderRadius: cleanStyleValue(selectedElement.boxModel.borderRadius),
-            padding: cleanStyleValue(selectedElement.boxModel.padding),
-            margin: cleanStyleValue(selectedElement.boxModel.margin),
-            borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
-            borderStyle: selectedElement.boxModel.borderStyle || 'solid',
-            borderColor: selectedElement.colors.border || 'transparent',
-            display: selectedElement.boxModel.display,
-            width: selectedElement.width + 'px',
-            height: selectedElement.height + 'px'
-        };
-    });
+    const [error, setError] = useState(null);
+    const [codeTab, setCodeTab] = useState('tailwind');
     const [generatedCode, setGeneratedCode] = useState('');
     const [isCopied, setIsCopied] = useState(false);
     const [generatedCss, setGeneratedCss] = useState('');
@@ -375,6 +338,123 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             originalValue={originalStyles.backgroundColor}
                             onReset={() => handleReset('backgroundColor')}
                         />
+
+                        {/* GRADIENT EDITOR */}
+                        {localStyles.backgroundImage && localStyles.backgroundImage !== 'none' && (
+                            <div className="pt-4 border-t border-slate-700/50">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Layers size={14} className="text-blue-400" />
+                                        <span className="text-xs font-bold text-slate-300">Gradient</span>
+                                    </div>
+                                    <button
+                                        onClick={() => handleStyleChange('backgroundImage', 'none')}
+                                        className="text-[10px] text-red-400 hover:text-red-300 font-medium"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+
+                                {(() => {
+                                    const parsed = parseGradient(localStyles.backgroundImage);
+
+                                    if (!parsed || parsed.isComplex) {
+                                        return (
+                                            <div className="bg-slate-950 rounded p-2 border border-slate-700">
+                                                <div className="text-[10px] text-slate-500 mb-1 flex items-center gap-1">
+                                                    <Code size={10} /> Complex Gradient
+                                                </div>
+                                                <textarea
+                                                    value={localStyles.backgroundImage}
+                                                    onChange={(e) => handleStyleChange('backgroundImage', e.target.value)}
+                                                    className="w-full h-16 bg-transparent text-xs font-mono text-slate-300 outline-none resize-none"
+                                                />
+                                            </div>
+                                        );
+                                    }
+
+                                    // Render Linear Gradient Editor
+                                    const updateStop = (index, field, val) => {
+                                        const newStops = [...parsed.stops];
+                                        newStops[index] = { ...newStops[index], [field]: val };
+                                        const newBg = buildGradientString(parsed.type, parsed.angle, newStops);
+                                        handleStyleChange('backgroundImage', newBg);
+                                    };
+
+                                    const addStop = () => {
+                                        const newStops = [...parsed.stops, { color: '#ffffff', position: '100%' }];
+                                        const newBg = buildGradientString(parsed.type, parsed.angle, newStops);
+                                        handleStyleChange('backgroundImage', newBg);
+                                    };
+
+                                    const removeStop = (index) => {
+                                        if (parsed.stops.length <= 2) return; // Minimum 2 stops
+                                        const newStops = parsed.stops.filter((_, i) => i !== index);
+                                        const newBg = buildGradientString(parsed.type, parsed.angle, newStops);
+                                        handleStyleChange('backgroundImage', newBg);
+                                    };
+
+                                    return (
+                                        <div className="space-y-3">
+                                            {/* Preview & Angle */}
+                                            <div className="flex gap-2">
+                                                <div className="w-10 h-10 rounded border border-slate-600 shadow-inner shrink-0" style={{ background: localStyles.backgroundImage }}></div>
+                                                <div className="flex-1">
+                                                    <SliderInput
+                                                        label="Angle (deg)"
+                                                        value={parsed.angle}
+                                                        onChange={(val) => {
+                                                            const angle = parseInt(val) || 0;
+                                                            const newBg = buildGradientString(parsed.type, angle, parsed.stops);
+                                                            handleStyleChange('backgroundImage', newBg);
+                                                        }}
+                                                        min={0} max={360}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Stops */}
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Stops</span>
+                                                    <button onClick={addStop} className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded text-blue-300 transition-colors">+ Add</button>
+                                                </div>
+                                                {parsed.stops.map((stop, i) => (
+                                                    <div key={i} className="flex items-center gap-2">
+                                                        <div className="relative w-6 h-6 rounded border border-slate-700 overflow-hidden shrink-0 group">
+                                                            <input
+                                                                type="color"
+                                                                value={stop.color.startsWith('#') ? stop.color : '#000000'} // Basic fallback for color input compatibility
+                                                                onChange={(e) => updateStop(i, 'color', e.target.value)}
+                                                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                            />
+                                                            <div className="w-full h-full" style={{ backgroundColor: stop.color }}></div>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <input
+                                                                type="text"
+                                                                value={stop.position || ''}
+                                                                placeholder="%"
+                                                                onChange={(e) => updateStop(i, 'position', e.target.value)}
+                                                                className="w-full bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs font-mono text-slate-300 focus:border-blue-500 outline-none"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => removeStop(i)}
+                                                            disabled={parsed.stops.length <= 2}
+                                                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )}
+
                         <SliderInput
                             label="Border Width"
                             value={localStyles.borderWidth}
@@ -586,6 +666,8 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                             onChange={(val) => handleStyleChange('margin', val)}
                             originalValues={originalStyles.margin}
                             onReset={() => handleReset('margin')}
+                            min={-500}
+                            max={500}
                         />
                         <RadiusInput
                             label="Radius"

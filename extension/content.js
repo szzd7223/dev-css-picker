@@ -73,6 +73,7 @@ function getElementInfo(el) {
         colors: {
             text: normalizeColor(style.color),
             background: normalizeColor(style.backgroundColor),
+            backgroundImage: style.backgroundImage !== 'none' ? style.backgroundImage : null,
             border: normalizeColor(style.borderColor)
         },
         typography: {
@@ -295,51 +296,82 @@ function getImageUrl(el) {
     return null;
 }
 
-async function extractImagesData() {
-    const images = [];
+async function extractAssetsData() {
+    const assets = [];
     const elements = document.querySelectorAll('*');
 
     elements.forEach(el => {
+        // 1. Check for Images & Backgrounds
         const url = getImageUrl(el);
-        if (!url || url.startsWith('data:')) return; // Skip data URLs for now to avoid bloat
-
-        const rect = el.getBoundingClientRect();
-        if (rect.width < 10 || rect.height < 10) return; // Skip tiny elements
-
-        const style = window.getComputedStyle(el);
-        const isBg = el.tagName !== 'IMG';
-
-        images.push({
-            cpId: getOrAssignId(el),
-            url: url,
-            tagName: el.tagName.toLowerCase(),
-            type: isBg ? 'Background' : 'Image',
-            renderedSize: {
-                width: Math.round(rect.width),
-                height: Math.round(rect.height)
-            },
-            intrinsicSize: el.tagName === 'IMG' ? {
-                width: el.naturalWidth,
-                height: el.naturalHeight
-            } : null,
-            styles: {
-                objectFit: style.objectFit,
-                objectPosition: style.objectPosition,
-                borderRadius: style.borderRadius,
-                opacity: style.opacity,
-                overflow: style.overflow,
-                backgroundSize: style.backgroundSize,
-                backgroundPosition: style.backgroundPosition,
-                backgroundRepeat: style.backgroundRepeat
+        if (url && !url.startsWith('data:')) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width >= 10 && rect.height >= 10) {
+                const style = window.getComputedStyle(el);
+                const isBg = el.tagName !== 'IMG';
+                assets.push({
+                    cpId: getOrAssignId(el),
+                    url: url,
+                    tagName: el.tagName.toLowerCase(),
+                    type: isBg ? 'Background' : 'Image',
+                    renderedSize: {
+                        width: Math.round(rect.width),
+                        height: Math.round(rect.height)
+                    },
+                    intrinsicSize: el.tagName === 'IMG' ? {
+                        width: el.naturalWidth,
+                        height: el.naturalHeight
+                    } : null,
+                    styles: {
+                        objectFit: style.objectFit,
+                        objectPosition: style.objectPosition,
+                        borderRadius: style.borderRadius,
+                        opacity: style.opacity,
+                        overflow: style.overflow,
+                        backgroundSize: style.backgroundSize,
+                        backgroundPosition: style.backgroundPosition,
+                        backgroundRepeat: style.backgroundRepeat,
+                        zIndex: style.zIndex // Phase 2 requirement
+                    }
+                });
             }
-        });
+        }
+
+        // 2. Check for Inline SVGs
+        if (el.tagName === 'svg') {
+            const rect = el.getBoundingClientRect();
+            if (rect.width >= 10 && rect.height >= 10) {
+                const style = window.getComputedStyle(el);
+                assets.push({
+                    cpId: getOrAssignId(el),
+                    url: null, // Inline SVGs don't represent as a URL easily for this list, but we track them
+                    tagName: 'svg',
+                    type: 'SVG',
+                    renderedSize: {
+                        width: Math.round(rect.width),
+                        height: Math.round(rect.height)
+                    },
+                    styles: {
+                        opacity: style.opacity,
+                        zIndex: style.zIndex,
+                        pointerEvents: style.pointerEvents
+                    },
+                    svgInfo: {
+                        viewBox: el.getAttribute('viewBox'),
+                        fill: style.fill,
+                        stroke: style.stroke
+                    }
+                });
+            }
+        }
     });
 
-    // De-duplicate by URL to keep gallery clean, but keep IDs for inspection
-    const seen = new Set();
-    return images.filter(img => {
-        if (seen.has(img.url)) return false;
-        seen.add(img.url);
+    // De-duplicate by URL for images ( SVGs are unique by ID usually, so we keep them all or dedup by content hash? 
+    // For now, simpler to just list them all as "Page SVGs" since selection is by DOM node anyway).
+    const seenUrls = new Set();
+    return assets.filter(asset => {
+        if (asset.type === 'SVG') return true; // Keep all SVGs
+        if (seenUrls.has(asset.url)) return false;
+        seenUrls.add(asset.url);
         return true;
     });
 }
@@ -351,8 +383,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
-    if (request.type === 'SCAN_IMAGES') {
-        extractImagesData().then(sendResponse);
+    if (request.type === 'SCAN_ASSETS') {
+        extractAssetsData().then(sendResponse);
         return true;
     }
 

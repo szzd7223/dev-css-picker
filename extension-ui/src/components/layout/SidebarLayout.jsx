@@ -4,9 +4,8 @@ import { LayoutGrid, Image, FileCode, Palette, ScanEye, User } from 'lucide-reac
 const TABS = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
     { id: 'inspector', icon: ScanEye, label: 'Inspector' },
-    { id: 'images', icon: Image, label: 'Images' },
+    { id: 'assets', icon: Image, label: 'Assets' },
     { id: 'colors', icon: Palette, label: 'Colors' },
-    { id: 'svgs', icon: FileCode, label: 'SVGs' },
     { id: 'profile', icon: User, label: 'Profile' },
 ];
 

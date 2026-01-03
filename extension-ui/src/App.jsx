@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import SidebarLayout from './components/layout/SidebarLayout'
 import OverviewTab from './components/tabs/OverviewTab'
-import ImagesTab from './components/tabs/ImagesTab'
-import SvgsTab from './components/tabs/SvgsTab'
+import AssetsTab from './components/tabs/AssetsTab'
 import ColorsTab from './components/tabs/ColorsTab'
 import InspectorTab from './components/tabs/InspectorTab'
 import ProfileTab from './components/tabs/ProfileTab'
@@ -175,14 +174,13 @@ function App() {
           setCodeTab={setCodeTab}
         />
       )}
-      {activeTab === 'images' && (
-        <ImagesTab
+      {activeTab === 'assets' && (
+        <AssetsTab
           selectedElement={inspectorData}
           onSelectElement={setInspectorData}
           onTabChange={handleTabChange}
         />
       )}
-      {activeTab === 'svgs' && <SvgsTab />}
       {activeTab === 'colors' && <ColorsTab />}
       {activeTab === 'profile' && <ProfileTab />}
     </SidebarLayout>
