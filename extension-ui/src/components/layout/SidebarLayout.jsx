@@ -25,7 +25,7 @@ export default function SidebarLayout({ activeTab, onTabChange, isInspectMode, o
                         <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${isInspectMode ? 'bg-blue-600' : 'bg-slate-700'}`}>
                             <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 shadow-sm ${isInspectMode ? 'left-4' : 'left-0.5'}`}></div>
                         </div>
-                        <span className="font-semibold text-sm group-hover:text-blue-400 transition-colors hidden sm:inline">Inspect</span>
+                        <span className="font-semibold text-sm group-hover:text-blue-400 transition-colors">Inspect Mode</span>
                     </div>
 
                     {/* Viewport Resizer Controls */}
