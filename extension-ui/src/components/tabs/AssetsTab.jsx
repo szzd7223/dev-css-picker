@@ -14,9 +14,11 @@ const ControlSection = ({ title, icon: Icon, children }) => (
     </div>
 );
 
-export default function ImagesTab({ selectedElement, onSelectElement, onTabChange }) {
-    const [images, setImages] = useState([]);
+
+export default function AssetsTab({ selectedElement, onSelectElement, onTabChange }) {
+    const [assets, setAssets] = useState([]);
     const [isScanning, setIsScanning] = useState(false);
+    const [filter, setFilter] = useState('all'); // all, image, svg, background
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
     const [isCopied, setIsCopied] = useState(false);
@@ -27,9 +29,9 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
         setIsScanning(true);
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, { type: 'SCAN_IMAGES' }, (response) => {
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'SCAN_ASSETS' }, (response) => {
                     if (response) {
-                        setImages(response);
+                        setAssets(response);
                     }
                     setIsScanning(false);
                 });
@@ -44,8 +46,23 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
     }, [scanPage]);
 
     useEffect(() => {
-        if (selectedElement && selectedElement.imageInfo) {
-            const styles = selectedElement.imageInfo.styles;
+        if (selectedElement && (selectedElement.imageInfo || selectedElement.tagName === 'svg')) {
+            // Normalize info. For SVGs selected directly via inspector, we might need to construct a similar "asset info" object if it's missing
+            // But our content.js scan returns a list. If we SELECT via Inspector, `selectedElement` comes from `getElementInfo`.
+            // Let's standardise. For now, rely on `imageInfo` being present or derived.
+            // Actually, `content.js` `getElementInfo` does NOT currently attach `imageInfo` for SVGs.
+            // I should probably update `getElementInfo` for SVGs too in content.js, OR just handle standard styles here.
+            // Phase 2 Plan says "Merge: Handle SVG data".
+            // Let's assume for now we use the `assets` list to pick, which gives us the specific CPID.
+            // When picking from list, we get `onSelectElement` which updates `selectedElement`.
+            // `selectedElement` has styles.
+
+            const styles = selectedElement.imageInfo?.styles || {
+                width: selectedElement.width,
+                height: selectedElement.height,
+                opacity: selectedElement.colors?.opacity || 1
+            }; // Fallback for raw elements
+
             const initialState = {
                 width: selectedElement.width + 'px',
                 height: selectedElement.height + 'px',
@@ -56,7 +73,8 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                 backgroundSize: styles.backgroundSize,
                 backgroundPosition: styles.backgroundPosition,
                 backgroundRepeat: styles.backgroundRepeat,
-                overflow: styles.overflow || 'visible'
+                overflow: styles.overflow || 'visible',
+                zIndex: styles.zIndex
             };
             setLocalStyles(initialState);
             setOriginalStyles(initialState);
@@ -67,18 +85,21 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
         }
     }, [selectedElement]);
 
-    const handleSelectImage = (img) => {
+    const handleSelectAsset = (asset) => {
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, {
                     type: 'SELECT_NODE',
-                    payload: { cpId: img.cpId }
+                    payload: { cpId: asset.cpId }
                 }, (response) => {
                     if (response) {
+                        // Inject the asset info from our scan into the response so we have the 'type' context
+                        // This is a client-side merge because getElementInfo might not know about the "Asset Type" context we derived during scan
+                        response.imageInfo = asset;
                         onSelectElement(response);
                     }
                 });
-                chrome.tabs.sendMessage(tabs[0].id, { type: 'HIGHLIGHT_NODE', payload: { cpId: img.cpId } });
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'HIGHLIGHT_NODE', payload: { cpId: asset.cpId } });
             }
         });
     };
@@ -132,12 +153,20 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
         if (selectedElement?.imageInfo?.url) {
             const link = document.createElement('a');
             link.href = selectedElement.imageInfo.url;
-            link.download = `image-${selectedElement.cpId}`;
+            link.download = `asset-${selectedElement.cpId}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
     };
+
+    const filteredAssets = assets.filter(a => {
+        if (filter === 'all') return true;
+        if (filter === 'image') return a.type === 'Image';
+        if (filter === 'svg') return a.type === 'SVG';
+        if (filter === 'background') return a.type === 'Background';
+        return true;
+    });
 
     return (
         <div className="p-4 animate-fade-in pb-20">
@@ -147,7 +176,7 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                     <button onClick={() => onTabChange('overview')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
                         <ArrowLeft size={18} />
                     </button>
-                    <h2 className="text-xl font-bold text-white">Images</h2>
+                    <h2 className="text-xl font-bold text-white">Assets</h2>
                 </div>
                 <button
                     onClick={scanPage}
@@ -158,56 +187,95 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                 </button>
             </div>
 
+            {/* Filters */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 custom-scrollbar">
+                {[
+                    { id: 'all', label: 'All' },
+                    { id: 'image', label: 'Images' },
+                    { id: 'svg', label: 'SVGs' },
+                    { id: 'background', label: 'Backgrounds' }
+                ].map(f => (
+                    <button
+                        key={f.id}
+                        onClick={() => setFilter(f.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${filter === f.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                            }`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+
             {/* Gallery View */}
             <div className="mb-8">
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Page Assets ({images.length})</h3>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        {filter === 'all' ? 'All Assets' : filter} ({filteredAssets.length})
+                    </h3>
                 </div>
                 <div className="grid grid-cols-4 gap-2 bg-slate-900/50 p-2 rounded-xl border border-slate-800 max-h-[180px] overflow-y-auto">
-                    {images.map((img) => (
+                    {filteredAssets.map((asset) => (
                         <button
-                            key={img.cpId}
-                            onClick={() => handleSelectImage(img)}
-                            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all group ${selectedElement?.cpId === img.cpId ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-800 hover:border-slate-600'
+                            key={asset.cpId}
+                            onClick={() => handleSelectAsset(asset)}
+                            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all group flex items-center justify-center bg-slate-950 ${selectedElement?.cpId === asset.cpId ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-800 hover:border-slate-600'
                                 }`}
                         >
-                            <img src={img.url} alt="" className="w-full h-full object-cover" />
+                            {asset.type === 'SVG' ? (
+                                <FileCode size={24} className="text-slate-500" />
+                            ) : (
+                                <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                            )}
+
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <Maximize2 size={12} className="text-white" />
                             </div>
+                            {asset.type !== 'Image' && (
+                                <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold uppercase backdrop-blur-sm">
+                                    {asset.type === 'SVG' ? 'SVG' : 'BG'}
+                                </div>
+                            )}
                         </button>
                     ))}
-                    {images.length === 0 && !isScanning && (
+                    {filteredAssets.length === 0 && !isScanning && (
                         <div className="col-span-4 py-8 text-center text-slate-500 text-xs font-medium">
-                            No images found on this page
+                            No assets found using this filter
                         </div>
                     )}
                 </div>
             </div>
 
-            {selectedElement && selectedElement.imageInfo ? (
+            {selectedElement ? (
                 <div className="space-y-6">
-                    {/* Selected Image Info */}
+                    {/* Selected Asset Info */}
                     <div className="bg-slate-800 rounded-xl border border-blue-500/30 p-4 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-2">
                             <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase">
-                                {selectedElement.imageInfo.type}
+                                {selectedElement.imageInfo?.type || 'Element'}
                             </span>
                         </div>
                         <div className="flex gap-4 mb-4">
-                            <div className="w-20 h-20 bg-slate-950 rounded-lg overflow-hidden border border-slate-700 flex-shrink-0">
-                                <img src={selectedElement.imageInfo.url} alt="" className="w-full h-full object-contain" />
+                            <div className="w-20 h-20 bg-slate-950 rounded-lg overflow-hidden border border-slate-700 flex-shrink-0 flex items-center justify-center">
+                                {selectedElement.imageInfo?.type === 'SVG' ? (
+                                    <FileCode size={32} className="text-slate-500" />
+                                ) : (
+                                    <img src={selectedElement.imageInfo?.url || ''} alt="" className="w-full h-full object-contain" />
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs text-slate-400 truncate mb-1">{selectedElement.imageInfo.url}</p>
+                                <p className="text-xs text-slate-400 truncate mb-1">
+                                    {selectedElement.imageInfo?.url || `<${selectedElement.tagName}>`}
+                                </p>
                                 <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Rendered</p>
-                                        <p className="text-xs text-slate-200 font-mono">
-                                            {selectedElement.imageInfo.renderedSize.width} × {selectedElement.imageInfo.renderedSize.height}
-                                        </p>
-                                    </div>
-                                    {selectedElement.imageInfo.intrinsicSize && (
+                                    {selectedElement.imageInfo?.renderedSize && (
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Rendered</p>
+                                            <p className="text-xs text-slate-200 font-mono">
+                                                {selectedElement.imageInfo.renderedSize.width} × {selectedElement.imageInfo.renderedSize.height}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {selectedElement.imageInfo?.intrinsicSize && (
                                         <div>
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Intrinsic</p>
                                             <p className="text-xs text-slate-200 font-mono">
@@ -215,23 +283,34 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                                             </p>
                                         </div>
                                     )}
+                                    {selectedElement.imageInfo?.svgInfo?.viewBox && (
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">ViewBox</p>
+                                            <p className="text-xs text-slate-200 font-mono truncate">
+                                                {selectedElement.imageInfo.svgInfo.viewBox}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={copyUrl}
-                                className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                            >
-                                {isCopied ? <><Smartphone size={14} className="text-green-500" /> Done</> : <><Copy size={14} /> Copy URL</>}
-                            </button>
-                            <button
-                                onClick={downloadImage}
-                                className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                            >
-                                <Download size={14} /> Download
-                            </button>
-                        </div>
+
+                        {selectedElement.imageInfo?.url && (
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={copyUrl}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                    {isCopied ? <><Smartphone size={14} className="text-green-500" /> Done</> : <><Copy size={14} /> Copy URL</>}
+                                </button>
+                                <button
+                                    onClick={downloadImage}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                    <Download size={14} /> Download
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Layout & Sizing */}
@@ -265,7 +344,7 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                             />
                         </div>
 
-                        {selectedElement.imageInfo.type === 'Image' && (
+                        {selectedElement.imageInfo?.type === 'Image' && (
                             <>
                                 <SelectInput
                                     label="Object Fit"
@@ -300,7 +379,7 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                     </ControlSection>
 
                     {/* Background Helpers */}
-                    {selectedElement.imageInfo.type === 'Background' && (
+                    {selectedElement.imageInfo?.type === 'Background' && (
                         <ControlSection title="Background Helpers" icon={Layers}>
                             <SelectInput
                                 label="Background Size"
@@ -358,6 +437,14 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                             onReset={() => handleReset('opacity')}
                             min={0} max={1}
                         />
+                        <SliderInput
+                            label="Z-Index"
+                            value={localStyles.zIndex}
+                            onChange={(val) => handleStyleChange('zIndex', val)}
+                            originalValue={originalStyles.zIndex}
+                            onReset={() => handleReset('zIndex')}
+                            min={0} max={100}
+                        />
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
                             <span className="text-xs font-medium text-slate-400 uppercase">Overflow</span>
@@ -381,7 +468,7 @@ export default function ImagesTab({ selectedElement, onSelectElement, onTabChang
                         <MousePointerClick size={32} />
                     </div>
                     <p className="text-slate-400 text-sm max-w-[200px]">
-                        Select an image from the gallery or use inspect mode to edit properties
+                        Select an asset from the gallery or use inspect mode to edit properties
                     </p>
                     <button
                         onClick={() => onTabChange('inspector')}

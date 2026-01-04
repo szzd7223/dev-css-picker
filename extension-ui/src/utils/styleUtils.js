@@ -109,7 +109,6 @@ export function generateTailwindClasses(styles) {
     if (styles.backgroundColor && styles.backgroundColor !== 'transparent') classes.push(getTwColor(styles.backgroundColor, 'bg'));
 
     // Border
-    // Border
     if (styles.borderRadius) {
         const val = styles.borderRadius;
         if (typeof val === 'string') {
@@ -143,4 +142,16 @@ export function generateTailwindClasses(styles) {
     if (styles.borderColor) classes.push(getTwColor(styles.borderColor, 'border'));
 
     return classes.join(' ');
+}
+
+export function cleanStyleValue(val) {
+    if (!val) return undefined;
+    if (typeof val === 'object') {
+        const out = {};
+        for (const k in val) {
+            out[k] = cleanStyleValue(val[k]);
+        }
+        return out;
+    }
+    return val;
 }

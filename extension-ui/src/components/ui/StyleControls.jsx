@@ -184,7 +184,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 };
 
 // New Component for handling Padding/Margin (All sides or Separate)
-export const SpacingInput = ({ label, values, onChange, originalValues, onReset }) => {
+export const SpacingInput = ({ label, values, onChange, originalValues, onReset, min = 0, max = 100 }) => {
     // values is object { top, right, bottom, left } or string (if previously single)
     const getObj = (val) => {
         if (typeof val === 'string') return { top: val, right: val, bottom: val, left: val };
@@ -267,7 +267,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                         onChange={(v) => handleSideChange('top', v)}
                         originalValue={original.top}
                         onReset={() => handleSideChange('top', original.top)}
-                        min={0} max={100}
+                        min={min} max={max}
                     />
                     <SliderInput
                         label="Right"
@@ -275,7 +275,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                         onChange={(v) => handleSideChange('right', v)}
                         originalValue={original.right}
                         onReset={() => handleSideChange('right', original.right)}
-                        min={0} max={100}
+                        min={min} max={max}
                     />
                     <SliderInput
                         label="Bottom"
@@ -283,7 +283,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                         onChange={(v) => handleSideChange('bottom', v)}
                         originalValue={original.bottom}
                         onReset={() => handleSideChange('bottom', original.bottom)}
-                        min={0} max={100}
+                        min={min} max={max}
                     />
                     <SliderInput
                         label="Left"
@@ -291,7 +291,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                         onChange={(v) => handleSideChange('left', v)}
                         originalValue={original.left}
                         onReset={() => handleSideChange('left', original.left)}
-                        min={0} max={100}
+                        min={min} max={max}
                     />
                 </div>
             ) : (
@@ -301,7 +301,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset 
                     onChange={handleAllChange}
                     originalValue={original.top}
                     onReset={() => onChange(original)}
-                    min={0} max={100}
+                    min={min} max={max}
                 />
             )}
         </div>
