@@ -93,6 +93,14 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
 
     const handleFlexGridChange = (prop, value) => {
         const newFlexGrid = { ...localStyles.flexGrid, [prop]: value };
+
+        // If master gap is changed, sync row/col gap to it so it takes effect
+        // (Since computed styles populate row/col gap, they would otherwise override the new gap value)
+        if (prop === 'gap') {
+            newFlexGrid.rowGap = value;
+            newFlexGrid.columnGap = value;
+        }
+
         const nextStyles = { ...localStyles, flexGrid: newFlexGrid };
         setLocalStyles(nextStyles);
 
