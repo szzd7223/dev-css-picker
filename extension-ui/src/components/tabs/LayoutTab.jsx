@@ -37,8 +37,18 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 right: cleanStyleValue(selectedElement.positioning?.right),
                 bottom: cleanStyleValue(selectedElement.positioning?.bottom),
                 left: cleanStyleValue(selectedElement.positioning?.left),
-                padding: cleanStyleValue(selectedElement.boxModel.padding),
-                margin: cleanStyleValue(selectedElement.boxModel.margin),
+                padding: {
+                    top: selectedElement.boxModel.padding?.top || '0px',
+                    right: selectedElement.boxModel.padding?.right || '0px',
+                    bottom: selectedElement.boxModel.padding?.bottom || '0px',
+                    left: selectedElement.boxModel.padding?.left || '0px'
+                },
+                margin: {
+                    top: selectedElement.boxModel.margin?.top || '0px',
+                    right: selectedElement.boxModel.margin?.right || '0px',
+                    bottom: selectedElement.boxModel.margin?.bottom || '0px',
+                    left: selectedElement.boxModel.margin?.left || '0px'
+                },
                 borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
                 flexGrid: {
                     flexDirection: selectedElement.flexGrid?.flexDirection,

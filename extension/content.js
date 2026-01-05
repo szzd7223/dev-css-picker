@@ -103,6 +103,7 @@ function getElementInfo(el) {
                 bottomLeft: style.borderBottomLeftRadius
             },
             borderWidth: style.borderTopWidth,
+            borderStyle: style.borderTopStyle,
             display: style.display
         },
         positioning: {
@@ -502,10 +503,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         el.style.borderBottomRightRadius = v.bottomRight;
                         el.style.borderBottomLeftRadius = v.bottomLeft;
                     } else {
-                        el.style[`${p}Top`] = v.top;
-                        el.style[`${p}Right`] = v.right;
-                        el.style[`${p}Bottom`] = v.bottom;
-                        el.style[`${p}Left`] = v.left;
+                        el.style.setProperty(`${p}-top`, v.top);
+                        el.style.setProperty(`${p}-right`, v.right);
+                        el.style.setProperty(`${p}-bottom`, v.bottom);
+                        el.style.setProperty(`${p}-left`, v.left);
                     }
                 } else {
                     el.style[p] = v;
