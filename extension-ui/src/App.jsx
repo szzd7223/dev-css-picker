@@ -3,6 +3,7 @@ import SidebarLayout from './components/layout/SidebarLayout'
 import OverviewTab from './components/tabs/OverviewTab'
 import AssetsTab from './components/tabs/AssetsTab'
 import ColorsTab from './components/tabs/ColorsTab'
+import LayoutTab from './components/tabs/LayoutTab'
 import InspectorTab from './components/tabs/InspectorTab'
 import ProfileTab from './components/tabs/ProfileTab'
 
@@ -239,7 +240,8 @@ function App() {
           />
         )
       }
-      {activeTab === 'colors' && <ColorsTab />}
+      {activeTab === 'layout' && <LayoutTab selectedElement={inspectorData} />}
+      {activeTab === 'colors' && <ColorsTab selectedElement={inspectorData} />}
       {activeTab === 'profile' && <ProfileTab />}
     </SidebarLayout >
   )

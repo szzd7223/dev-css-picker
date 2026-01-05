@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Image, Maximize2, Minimize2, Copy, Download, MousePointerClick, RefreshCw, Layout, Smartphone, Layers, ArrowLeft } from 'lucide-react';
+import { Image, Maximize2, Minimize2, Copy, Download, MousePointerClick, RefreshCw, Layout, Smartphone, Layers, ArrowLeft, Box } from 'lucide-react';
 import { SliderInput, SelectInput, ColorInput } from '../ui/StyleControls';
+import { isRestrictedUrl } from '../../utils/browserUtils';
 
 const ControlSection = ({ title, icon: Icon, children }) => (
     <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-4">
@@ -18,6 +19,7 @@ const ControlSection = ({ title, icon: Icon, children }) => (
 export default function AssetsTab({ selectedElement, onSelectElement, onTabChange }) {
     const [assets, setAssets] = useState([]);
     const [isScanning, setIsScanning] = useState(false);
+    const [error, setError] = useState(null);
     const [filter, setFilter] = useState('all'); // all, image, svg, background
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
@@ -27,17 +29,32 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
 
     const scanPage = useCallback(() => {
         setIsScanning(true);
+        setError(null);
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, { type: 'SCAN_ASSETS' }, (response) => {
-                    if (response) {
-                        setAssets(response);
-                    }
-                    setIsScanning(false);
-                });
-            } else {
+            const activeTab = tabs[0];
+            if (!activeTab?.id) {
+                setError("No active tab.");
                 setIsScanning(false);
+                return;
             }
+
+            if (isRestrictedUrl(activeTab.url)) {
+                setError("RESTRICTED_PAGE");
+                setIsScanning(false);
+                return;
+            }
+
+            chrome.tabs.sendMessage(activeTab.id, { type: 'SCAN_ASSETS' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    setError("Could not connect to page.");
+                    setIsScanning(false);
+                    return;
+                }
+                if (response) {
+                    setAssets(response);
+                }
+                setIsScanning(false);
+            });
         });
     }, []);
 
@@ -213,36 +230,51 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
                         {filter === 'all' ? 'All Assets' : filter} ({filteredAssets.length})
                     </h3>
                 </div>
-                <div className="grid grid-cols-4 gap-2 bg-slate-900/50 p-2 rounded-xl border border-slate-800 max-h-[180px] overflow-y-auto">
-                    {filteredAssets.map((asset) => (
-                        <button
-                            key={asset.cpId}
-                            onClick={() => handleSelectAsset(asset)}
-                            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all group flex items-center justify-center bg-slate-950 ${selectedElement?.cpId === asset.cpId ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-800 hover:border-slate-600'
-                                }`}
-                        >
-                            {asset.type === 'SVG' ? (
-                                <FileCode size={24} className="text-slate-500" />
-                            ) : (
-                                <img src={asset.url} alt="" className="w-full h-full object-cover" />
-                            )}
 
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Maximize2 size={12} className="text-white" />
-                            </div>
-                            {asset.type !== 'Image' && (
-                                <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold uppercase backdrop-blur-sm">
-                                    {asset.type === 'SVG' ? 'SVG' : 'BG'}
-                                </div>
-                            )}
-                        </button>
-                    ))}
-                    {filteredAssets.length === 0 && !isScanning && (
-                        <div className="col-span-4 py-8 text-center text-slate-500 text-xs font-medium">
-                            No assets found using this filter
+                {error ? (
+                    <div className="bg-slate-900/50 p-8 rounded-xl border border-slate-800 text-center flex flex-col items-center">
+                        <div className={`w-10 h-10 ${error === 'RESTRICTED_PAGE' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'} rounded-full flex items-center justify-center mb-3`}>
+                            <Box size={20} />
                         </div>
-                    )}
-                </div>
+                        <p className="text-slate-400 text-xs max-w-[180px]">
+                            {error === 'RESTRICTED_PAGE'
+                                ? "Assets cannot be scanned on restricted browser pages."
+                                : error}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-4 gap-2 bg-slate-900/50 p-2 rounded-xl border border-slate-800 max-h-[180px] overflow-y-auto">
+                        {filteredAssets.map((asset) => (
+                            <button
+                                key={asset.cpId}
+                                onClick={() => handleSelectAsset(asset)}
+                                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all group flex items-center justify-center bg-slate-950 ${selectedElement?.cpId === asset.cpId ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-800 hover:border-slate-600'
+                                    }`}
+                            >
+                                {asset.type === 'SVG' ? (
+                                    <FileCode size={24} className="text-slate-500" />
+                                ) : (
+                                    <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                                )}
+
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Maximize2 size={12} className="text-white" />
+                                </div>
+                                {asset.type !== 'Image' && (
+                                    <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold uppercase backdrop-blur-sm">
+                                        {asset.type === 'SVG' ? 'SVG' : 'BG'}
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                        {filteredAssets.length === 0 && !isScanning && (
+                            <div className="col-span-4 py-8 text-center text-slate-500 text-xs font-medium">
+                                No assets found using this filter
+                            </div>
+                        )
+                        }
+                    </div>
+                )}
             </div>
 
             {selectedElement ? (

@@ -1,19 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Type, Palette, Move, Layers, Code, Square, MousePointerClick, Circle, Check, Copy, ArrowLeft, RefreshCw } from 'lucide-react';
-import { SliderInput, SelectInput, ColorInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
+import { Type, Check, Copy, ArrowLeft, RefreshCw, Box } from 'lucide-react';
+import { SliderInput, SelectInput } from '../ui/StyleControls';
 import DomTree from './DomTree';
-import { cleanStyleValue, generateTailwindClasses } from '../../utils/styleUtils';
-import { parseGradient, buildGradientString } from '../../utils/gradientParser';
-
-const ShapeButton = ({ label, icon: Icon, onClick }) => (
-    <button
-        onClick={onClick}
-        className="flex flex-col items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-transparent hover:border-slate-600 transition-all gap-1 group"
-    >
-        <Icon size={16} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
-        <span className="text-[10px] text-slate-500 group-hover:text-slate-300 font-medium">{label}</span>
-    </button>
-);
+import { generateTailwindClasses } from '../../utils/styleUtils';
+import { isRestrictedUrl } from '../../utils/browserUtils';
 
 export default function InspectorTab({ selectedElement, onSelectElement, onTabChange }) {
     const [localStyles, setLocalStyles] = useState({});
@@ -68,32 +58,12 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
 
             const initialState = {
                 color: selectedElement.colors.text,
-                backgroundColor: selectedElement.colors.background,
                 fontSize: selectedElement.typography.size,
                 fontWeight: selectedElement.typography.weight,
-                borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
-                padding: cleanStyleValue(selectedElement.boxModel.padding),
-                margin: cleanStyleValue(selectedElement.boxModel.margin),
-                borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
-                borderStyle: selectedElement.boxModel.borderStyle || 'solid',
-                borderColor: selectedElement.colors.border || 'transparent',
-                display: selectedElement.boxModel.display,
+                // We keep some basic dimensions for the CSS preview if needed, or remove them.
+                // Let's keep them for the "summary" CSS block even if not editable here.
                 width: selectedElement.width + 'px',
                 height: selectedElement.height + 'px',
-                // New Phase 1 Properties
-                position: selectedElement.positioning?.position || 'static',
-                top: cleanStyleValue(selectedElement.positioning?.top),
-                right: cleanStyleValue(selectedElement.positioning?.right),
-                bottom: cleanStyleValue(selectedElement.positioning?.bottom),
-                left: cleanStyleValue(selectedElement.positioning?.left),
-                flexGrid: {
-                    flexDirection: selectedElement.flexGrid?.flexDirection,
-                    justifyContent: selectedElement.flexGrid?.justifyContent,
-                    alignItems: selectedElement.flexGrid?.alignItems,
-                    gap: cleanStyleValue(selectedElement.flexGrid?.gap),
-                    gridTemplateColumns: selectedElement.flexGrid?.gridTemplateColumns,
-                    gridTemplateRows: selectedElement.flexGrid?.gridTemplateRows,
-                }
             };
 
             setOriginalStyles(initialState);
@@ -110,7 +80,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
         const code = generateTailwindClasses(localStyles);
         setGeneratedCode(code);
 
-        const cssBlock = `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n  width: ${localStyles.width};\n  height: ${localStyles.height};\n}`;
+        const cssBlock = `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  font-size: ${localStyles.fontSize};\n}`;
         setGeneratedCss(cssBlock);
     }, [localStyles, selectedElement]);
 
@@ -146,56 +116,6 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
         }
     };
 
-    const applyShape = (shape) => {
-        const updates = {};
-        if (shape === 'circle') {
-            updates.borderRadius = '50%';
-            // Force square aspect ratio if possible, or just set radius
-            // For now, let's just do radius + equal width/height if it has dimensions
-            const size = Math.max(parseInt(localStyles.width) || 0, parseInt(localStyles.height) || 0);
-            if (size > 0) {
-                updates.width = `${size}px`;
-                updates.height = `${size}px`;
-            }
-        } else if (shape === 'rounded') {
-            updates.borderRadius = '8px';
-        } else if (shape === 'square') {
-            updates.borderRadius = '0px';
-        }
-
-        const nextStyles = { ...localStyles, ...updates };
-        setLocalStyles(nextStyles);
-        sendLiveUpdate(updates);
-    };
-
-    const handleFlexGridChange = (prop, value) => {
-        const newFlexGrid = { ...localStyles.flexGrid, [prop]: value };
-        const nextStyles = { ...localStyles, flexGrid: newFlexGrid };
-        setLocalStyles(nextStyles);
-        sendLiveUpdate({ [prop]: value });
-    };
-
-    // Helper to set grid columns/rows from presets
-    const handleGridPreset = (prop, count) => {
-        if (count === 'custom') return; // No-op or open generic input in future
-        const val = count === 'auto-fit'
-            ? 'repeat(auto-fit, minmax(100px, 1fr))'
-            : `repeat(${count}, 1fr)`;
-        handleFlexGridChange(prop, val);
-    };
-
-    const getGridPreset = (val) => {
-        if (!val) return 'custom';
-        if (val.includes('repeat(1, 1fr)')) return '1';
-        if (val.includes('repeat(2, 1fr)')) return '2';
-        if (val.includes('repeat(3, 1fr)')) return '3';
-        if (val.includes('repeat(4, 1fr)')) return '4';
-        if (val.includes('repeat(6, 1fr)')) return '6';
-        if (val.includes('repeat(12, 1fr)')) return '12';
-        if (val.includes('auto-fit')) return 'auto-fit';
-        return 'custom';
-    };
-
     const handleSelectNode = (cpId) => {
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
@@ -225,18 +145,39 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
     // --- SETUP EFFECT ---
     useEffect(() => {
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (!tabs[0]?.id) {
+            const activeTab = tabs[0];
+            if (!activeTab?.id) {
                 setError("No active page found.");
+                return;
+            }
+
+            if (isRestrictedUrl(activeTab.url)) {
+                setError("RESTRICTED_PAGE");
+            } else {
+                setError(null);
             }
         });
-        setError(null);
     }, []);
 
     if (error) {
+        const isRestricted = error === "RESTRICTED_PAGE";
         return (
-            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in text-slate-400">
-                <p>{error}</p>
-                <button onClick={() => chrome.tabs.reload()} className="mt-4 text-blue-400 hover:text-blue-300">Refresh Page</button>
+            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
+                <div className={`w-12 h-12 ${isRestricted ? 'bg-amber-500/10' : 'bg-red-500/10'} rounded-full flex items-center justify-center mb-4`}>
+                    <Box className={isRestricted ? 'text-amber-500' : 'text-red-500'} size={24} />
+                </div>
+                <h3 className="text-white font-bold mb-2">
+                    {isRestricted ? "Restricted Page" : "Error"}
+                </h3>
+                <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
+                    {isRestricted
+                        ? "For security reasons, CSS Picker cannot be used on internal browser pages or the Web Store."
+                        : error
+                    }
+                </p>
+                {!isRestricted && (
+                    <button onClick={() => chrome.tabs.reload()} className="text-blue-400 hover:text-blue-300">Refresh Page</button>
+                )}
             </div>
         )
     }
@@ -317,399 +258,9 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                     </div>
                 </div>
 
-                {/* COLORS */}
-                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                        <Palette size={16} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-200">Colors</span>
-                    </div>
-                    <div className="p-4 space-y-4">
-                        <ColorInput
-                            label="Text Color"
-                            value={localStyles.color}
-                            onChange={(val) => handleStyleChange('color', val)}
-                            originalValue={originalStyles.color}
-                            onReset={() => handleReset('color')}
-                        />
-                        <ColorInput
-                            label="Background"
-                            value={localStyles.backgroundColor}
-                            onChange={(val) => handleStyleChange('backgroundColor', val)}
-                            originalValue={originalStyles.backgroundColor}
-                            onReset={() => handleReset('backgroundColor')}
-                        />
-
-                        {/* GRADIENT EDITOR */}
-                        {localStyles.backgroundImage && localStyles.backgroundImage !== 'none' && (
-                            <div className="pt-4 border-t border-slate-700/50">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <Layers size={14} className="text-blue-400" />
-                                        <span className="text-xs font-bold text-slate-300">Gradient</span>
-                                    </div>
-                                    <button
-                                        onClick={() => handleStyleChange('backgroundImage', 'none')}
-                                        className="text-[10px] text-red-400 hover:text-red-300 font-medium"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-
-                                {(() => {
-                                    const parsed = parseGradient(localStyles.backgroundImage);
-
-                                    if (!parsed || parsed.isComplex) {
-                                        return (
-                                            <div className="bg-slate-950 rounded p-2 border border-slate-700">
-                                                <div className="text-[10px] text-slate-500 mb-1 flex items-center gap-1">
-                                                    <Code size={10} /> Complex Gradient
-                                                </div>
-                                                <textarea
-                                                    value={localStyles.backgroundImage}
-                                                    onChange={(e) => handleStyleChange('backgroundImage', e.target.value)}
-                                                    className="w-full h-16 bg-transparent text-xs font-mono text-slate-300 outline-none resize-none"
-                                                />
-                                            </div>
-                                        );
-                                    }
-
-                                    // Render Linear Gradient Editor
-                                    const updateStop = (index, field, val) => {
-                                        const newStops = [...parsed.stops];
-                                        newStops[index] = { ...newStops[index], [field]: val };
-                                        const newBg = buildGradientString(parsed.type, parsed.angle, newStops);
-                                        handleStyleChange('backgroundImage', newBg);
-                                    };
-
-                                    const addStop = () => {
-                                        const newStops = [...parsed.stops, { color: '#ffffff', position: '100%' }];
-                                        const newBg = buildGradientString(parsed.type, parsed.angle, newStops);
-                                        handleStyleChange('backgroundImage', newBg);
-                                    };
-
-                                    const removeStop = (index) => {
-                                        if (parsed.stops.length <= 2) return; // Minimum 2 stops
-                                        const newStops = parsed.stops.filter((_, i) => i !== index);
-                                        const newBg = buildGradientString(parsed.type, parsed.angle, newStops);
-                                        handleStyleChange('backgroundImage', newBg);
-                                    };
-
-                                    return (
-                                        <div className="space-y-3">
-                                            {/* Preview & Angle */}
-                                            <div className="flex gap-2">
-                                                <div className="w-10 h-10 rounded border border-slate-600 shadow-inner shrink-0" style={{ background: localStyles.backgroundImage }}></div>
-                                                <div className="flex-1">
-                                                    <SliderInput
-                                                        label="Angle (deg)"
-                                                        value={parsed.angle}
-                                                        onChange={(val) => {
-                                                            const angle = parseInt(val) || 0;
-                                                            const newBg = buildGradientString(parsed.type, angle, parsed.stops);
-                                                            handleStyleChange('backgroundImage', newBg);
-                                                        }}
-                                                        min={0} max={360}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Stops */}
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Stops</span>
-                                                    <button onClick={addStop} className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded text-blue-300 transition-colors">+ Add</button>
-                                                </div>
-                                                {parsed.stops.map((stop, i) => (
-                                                    <div key={i} className="flex items-center gap-2">
-                                                        <div className="relative w-6 h-6 rounded border border-slate-700 overflow-hidden shrink-0 group">
-                                                            <input
-                                                                type="color"
-                                                                value={stop.color.startsWith('#') ? stop.color : '#000000'} // Basic fallback for color input compatibility
-                                                                onChange={(e) => updateStop(i, 'color', e.target.value)}
-                                                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                                            />
-                                                            <div className="w-full h-full" style={{ backgroundColor: stop.color }}></div>
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <input
-                                                                type="text"
-                                                                value={stop.position || ''}
-                                                                placeholder="%"
-                                                                onChange={(e) => updateStop(i, 'position', e.target.value)}
-                                                                className="w-full bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs font-mono text-slate-300 focus:border-blue-500 outline-none"
-                                                            />
-                                                        </div>
-                                                        <button
-                                                            onClick={() => removeStop(i)}
-                                                            disabled={parsed.stops.length <= 2}
-                                                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        )}
-
-                        <SliderInput
-                            label="Border Width"
-                            value={localStyles.borderWidth}
-                            onChange={(val) => handleStyleChange('borderWidth', val)}
-                            originalValue={originalStyles.borderWidth}
-                            onReset={() => handleReset('borderWidth')}
-                            min={0} max={20}
-                        />
-                        <SelectInput
-                            label="Border Style"
-                            value={localStyles.borderStyle}
-                            onChange={(val) => handleStyleChange('borderStyle', val)}
-                            originalValue={originalStyles.borderStyle}
-                            onReset={() => handleReset('borderStyle')}
-                            options={[
-                                { value: 'solid', label: 'Solid' },
-                                { value: 'dashed', label: 'Dashed' },
-                                { value: 'dotted', label: 'Dotted' },
-                                { value: 'double', label: 'Double' },
-                                { value: 'none', label: 'None' },
-                            ]}
-                        />
-                        <ColorInput
-                            label="Border Color"
-                            value={localStyles.borderColor}
-                            onChange={(val) => handleStyleChange('borderColor', val)}
-                            originalValue={originalStyles.borderColor}
-                            onReset={() => handleReset('borderColor')}
-                        />
-                    </div>
-                </div>
-
-                {/* POSITIONING */}
-                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                        <Move size={16} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-200">Positioning</span>
-                    </div>
-                    <div className="p-4 space-y-4">
-                        <SelectInput
-                            label="Type"
-                            value={localStyles.position}
-                            onChange={(val) => handleStyleChange('position', val)}
-                            options={[
-                                { value: 'static', label: 'Static' },
-                                { value: 'relative', label: 'Relative' },
-                                { value: 'absolute', label: 'Absolute' },
-                                { value: 'fixed', label: 'Fixed' },
-                                { value: 'sticky', label: 'Sticky' },
-                            ]}
-                        />
-                        {localStyles.position !== 'static' && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <SliderInput
-                                    label="Top"
-                                    value={localStyles.top}
-                                    onChange={(val) => handleStyleChange('top', val)}
-                                    min={-100} max={500} allowAuto
-                                />
-                                <SliderInput
-                                    label="Right"
-                                    value={localStyles.right}
-                                    onChange={(val) => handleStyleChange('right', val)}
-                                    min={-100} max={500} allowAuto
-                                />
-                                <SliderInput
-                                    label="Bottom"
-                                    value={localStyles.bottom}
-                                    onChange={(val) => handleStyleChange('bottom', val)}
-                                    min={-100} max={500} allowAuto
-                                />
-                                <SliderInput
-                                    label="Left"
-                                    value={localStyles.left}
-                                    onChange={(val) => handleStyleChange('left', val)}
-                                    min={-100} max={500} allowAuto
-                                />
-                            </div>
-                        )}
-                        {/* Z-Index could go here, but not in strict scope for Phase 1 */}
-                    </div>
-                </div>
-
-                {/* LAYOUT */}
-                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                        <Box size={16} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-200">Layout</span>
-                    </div>
-                    <div className="p-4 space-y-4">
-                        {/* Spacing (Gap) - Only for Flex/Grid */}
-                        {(localStyles.display === 'flex' || localStyles.display === 'grid') && (
-                            <div className="pb-4 border-b border-slate-700 mb-4">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Child Spacing</div>
-                                <SliderInput
-                                    label="Gap"
-                                    value={localStyles.flexGrid?.gap || '0px'}
-                                    onChange={(val) => handleFlexGridChange('gap', val)}
-                                    min={0} max={100}
-                                />
-                                {(localStyles.display === 'grid') && (
-                                    <>
-                                        <SliderInput
-                                            label="Row Gap"
-                                            value={localStyles.flexGrid?.rowGap || localStyles.flexGrid?.gap || '0px'}
-                                            onChange={(val) => handleFlexGridChange('rowGap', val)}
-                                            min={0} max={100}
-                                        />
-                                        <SliderInput
-                                            label="Col Gap"
-                                            value={localStyles.flexGrid?.columnGap || localStyles.flexGrid?.gap || '0px'}
-                                            onChange={(val) => handleFlexGridChange('columnGap', val)}
-                                            min={0} max={100}
-                                        />
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Flex Controls */}
-                        {localStyles.display === 'flex' && (
-                            <div className="pb-4 border-b border-slate-700 mb-4">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Flexbox</div>
-                                <SelectInput
-                                    label="Direction"
-                                    value={localStyles.flexGrid?.flexDirection || 'row'}
-                                    onChange={(val) => handleFlexGridChange('flexDirection', val)}
-                                    options={[
-                                        { value: 'row', label: 'Row →' },
-                                        { value: 'column', label: 'Column ↓' },
-                                        { value: 'row-reverse', label: 'Row Reverse ←' },
-                                        { value: 'column-reverse', label: 'Column Reverse ↑' },
-                                    ]}
-                                />
-                                <SelectInput
-                                    label="Align Items"
-                                    value={localStyles.flexGrid?.alignItems || 'stretch'}
-                                    onChange={(val) => handleFlexGridChange('alignItems', val)}
-                                    options={[
-                                        { value: 'stretch', label: 'Stretch' },
-                                        { value: 'flex-start', label: 'Start' },
-                                        { value: 'center', label: 'Center' },
-                                        { value: 'flex-end', label: 'End' },
-                                        { value: 'baseline', label: 'Baseline' },
-                                    ]}
-                                />
-                                <SelectInput
-                                    label="Justify Content"
-                                    value={localStyles.flexGrid?.justifyContent || 'flex-start'}
-                                    onChange={(val) => handleFlexGridChange('justifyContent', val)}
-                                    options={[
-                                        { value: 'flex-start', label: 'Start' },
-                                        { value: 'center', label: 'Center' },
-                                        { value: 'flex-end', label: 'End' },
-                                        { value: 'space-between', label: 'Space Between' },
-                                        { value: 'space-around', label: 'Space Around' },
-                                        { value: 'space-evenly', label: 'Space Evenly' },
-                                    ]}
-                                />
-                            </div>
-                        )}
-
-                        {/* Grid Controls */}
-                        {localStyles.display === 'grid' && (
-                            <div className="pb-4 border-b border-slate-700 mb-4">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Grid Layout</div>
-                                <SelectInput
-                                    label="Columns"
-                                    value={getGridPreset(localStyles.flexGrid?.gridTemplateColumns)}
-                                    onChange={(val) => handleGridPreset('gridTemplateColumns', val)}
-                                    options={[
-                                        { value: '1', label: '1 Column' },
-                                        { value: '2', label: '2 Columns' },
-                                        { value: '3', label: '3 Columns' },
-                                        { value: '4', label: '4 Columns' },
-                                        { value: '6', label: '6 Columns' },
-                                        { value: '12', label: '12 Columns' },
-                                        { value: 'auto-fit', label: 'Auto Fit' },
-                                        { value: 'custom', label: 'Custom' },
-                                    ]}
-                                />
-                                <SelectInput
-                                    label="Rows"
-                                    value="custom" // Placeholder as we didn't impl row reading yet fully
-                                    onChange={(val) => handleGridPreset('gridTemplateRows', val)}
-                                    options={[
-                                        { value: '1', label: '1 Row' },
-                                        { value: '2', label: '2 Rows' },
-                                        { value: '3', label: '3 Rows' },
-                                        { value: '4', label: '4 Rows' },
-                                        { value: 'custom', label: 'Custom' },
-                                    ]}
-                                />
-                            </div>
-                        )}
-
-                        <SpacingInput
-                            key={`${selectedElement.cpId}-padding`}
-                            label="Padding"
-                            values={localStyles.padding}
-                            onChange={(val) => handleStyleChange('padding', val)}
-                            originalValues={originalStyles.padding}
-                            onReset={() => handleReset('padding')}
-                        />
-                        <SpacingInput
-                            key={`${selectedElement.cpId}-margin`}
-                            label="Margin"
-                            values={localStyles.margin}
-                            onChange={(val) => handleStyleChange('margin', val)}
-                            originalValues={originalStyles.margin}
-                            onReset={() => handleReset('margin')}
-                            min={-500}
-                            max={500}
-                        />
-                        <RadiusInput
-                            label="Radius"
-                            values={localStyles.borderRadius}
-                            onChange={(val) => handleStyleChange('borderRadius', val)}
-                            originalValues={originalStyles.borderRadius}
-                            onReset={() => handleReset('borderRadius')}
-                            max={Math.max(50, Math.round(Math.min(
-                                parseFloat(localStyles.width) || selectedElement.width || 0,
-                                parseFloat(localStyles.height) || selectedElement.height || 0
-                            ) / 2))}
-                        />
-                        <SelectInput
-                            label="Display"
-                            value={localStyles.display}
-                            onChange={(val) => handleStyleChange('display', val)}
-                            originalValue={originalStyles.display}
-                            onReset={() => handleReset('display')}
-                            options={[
-                                { value: 'block', label: 'block' },
-                                { value: 'flex', label: 'flex' },
-                                { value: 'grid', label: 'grid' },
-                                { value: 'inline-block', label: 'inline-block' },
-                                { value: 'none', label: 'none' },
-                            ]}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                            <SliderInput label="Width" value={localStyles.width} onChange={(val) => handleStyleChange('width', val)} originalValue={originalStyles.width} onReset={() => handleReset('width')} min={0} max={1000} allowAuto />
-                            <SliderInput label="Height" value={localStyles.height} onChange={(val) => handleStyleChange('height', val)} originalValue={originalStyles.height} onReset={() => handleReset('height')} min={0} max={1000} allowAuto />
-                        </div>
-
-                        {/* Shape Tools */}
-                        <div className="pt-2 border-t border-slate-700">
-                            <div className="mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Shapes</div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <ShapeButton label="Square" icon={Square} onClick={() => applyShape('square')} />
-                                <ShapeButton label="Rounded" icon={MousePointerClick} onClick={() => applyShape('rounded')} />
-                                <ShapeButton label="Circle" icon={Circle} onClick={() => applyShape('circle')} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* COLORS (Moved to ColorsTab) - Removed */}
+                {/* POSITIONING (Moved to LayoutTab) - Removed */}
+                {/* LAYOUT (Moved to LayoutTab) - Removed */}
             </div>
 
             {/* GENERATED CODE */}

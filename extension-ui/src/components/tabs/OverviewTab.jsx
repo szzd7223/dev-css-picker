@@ -44,18 +44,30 @@ export default function OverviewTab({ onTabChange, onToggleInspect, selectedElem
     }
 
     if (error) {
+        const isRestricted = error === "RESTRICTED_PAGE";
+
         return (
             <div className="p-8 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                    <Box className="text-red-500" size={24} />
+                <div className={`w-12 h-12 ${isRestricted ? 'bg-amber-500/10' : 'bg-red-500/10'} rounded-full flex items-center justify-center mb-4`}>
+                    <Box className={isRestricted ? 'text-amber-500' : 'text-red-500'} size={24} />
                 </div>
-                <p className="text-red-400 mb-4">{error}</p>
-                <button
-                    onClick={rescan}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition"
-                >
-                    <RefreshCw size={14} /> Retry Scan
-                </button>
+                <h3 className="text-white font-bold mb-2">
+                    {isRestricted ? "Restricted Page" : "Scan Error"}
+                </h3>
+                <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
+                    {isRestricted
+                        ? "For security reasons, CSS Picker cannot be used on internal browser pages or the Web Store."
+                        : error
+                    }
+                </p>
+                {!isRestricted && (
+                    <button
+                        onClick={rescan}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition"
+                    >
+                        <RefreshCw size={14} /> Retry Scan
+                    </button>
+                )}
             </div>
         )
     }

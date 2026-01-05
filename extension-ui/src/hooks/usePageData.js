@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { isRestrictedUrl } from '../utils/browserUtils';
 
 export function usePageData() {
     const [data, setData] = useState({
@@ -33,6 +34,15 @@ export function usePageData() {
             const activeTab = tabs[0];
             if (!activeTab?.id) {
                 setData(prev => ({ ...prev, loading: false, error: "No active tab." }));
+                return;
+            }
+
+            if (isRestrictedUrl(activeTab.url)) {
+                setData(prev => ({
+                    ...prev,
+                    loading: false,
+                    error: "RESTRICTED_PAGE"
+                }));
                 return;
             }
 

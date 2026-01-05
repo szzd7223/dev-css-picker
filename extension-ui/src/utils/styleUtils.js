@@ -53,8 +53,21 @@ export function generateTailwindClasses(styles) {
     }
 
     if (styles.display === 'grid') {
-        if (fg.gridTemplateColumns) classes.push('grid-cols-[repeat(auto-fit,minmax(0,1fr))]');
+        if (fg.gridTemplateColumns) {
+            const repeatMatch = fg.gridTemplateColumns.match(/repeat\((\d+),/);
+            const parts = fg.gridTemplateColumns.trim().split(/\s+(?![^()]*\))/);
+            const count = repeatMatch ? repeatMatch[1] : parts.length;
+            if ([1, 2, 3, 4, 5, 6, 12].includes(Number(count))) {
+                classes.push(`grid-cols-${count}`);
+            } else if (fg.gridTemplateColumns.includes('auto-fit')) {
+                classes.push('grid-cols-[repeat(auto-fit,minmax(0,1fr))]');
+            } else {
+                classes.push(`grid-cols-[${fg.gridTemplateColumns.replace(/\s+/g, '_')}]`);
+            }
+        }
         if (fg.gap) classes.push(getTwSpacing(fg.gap, 'gap'));
+        if (fg.rowGap && fg.rowGap !== fg.gap) classes.push(getTwSpacing(fg.rowGap, 'gap-y'));
+        if (fg.columnGap && fg.columnGap !== fg.gap) classes.push(getTwSpacing(fg.columnGap, 'gap-x'));
     }
 
     // Size

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { LayoutGrid, Image, FileCode, Palette, ScanEye, User, Smartphone, Tablet, Monitor, Maximize } from 'lucide-react';
+import { LayoutGrid, Image, FileCode, Palette, ScanEye, User, Smartphone, Tablet, Monitor, Maximize, Box } from 'lucide-react';
 
 const TABS = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
     { id: 'inspector', icon: ScanEye, label: 'Inspector' },
-    { id: 'assets', icon: Image, label: 'Assets' },
+    { id: 'layout', icon: Box, label: 'Layout' },
     { id: 'colors', icon: Palette, label: 'Colors' },
+    { id: 'assets', icon: Image, label: 'Assets' },
     { id: 'profile', icon: User, label: 'Profile' },
 ];
 
