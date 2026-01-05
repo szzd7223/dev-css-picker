@@ -85,7 +85,22 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
         const newFlexGrid = { ...localStyles.flexGrid, [prop]: value };
         const nextStyles = { ...localStyles, flexGrid: newFlexGrid };
         setLocalStyles(nextStyles);
-        sendLiveUpdate({ [prop]: value });
+
+        // Sync the entire flex/grid state to the element to ensure consistency
+        // especially when properties like auto-flow depend on template-rows/cols
+        sendLiveUpdate({
+            display: localStyles.display,
+            flexDirection: newFlexGrid.flexDirection,
+            justifyContent: newFlexGrid.justifyContent,
+            alignItems: newFlexGrid.alignItems,
+            gap: newFlexGrid.gap,
+            rowGap: newFlexGrid.rowGap,
+            columnGap: newFlexGrid.columnGap,
+            gridTemplateColumns: newFlexGrid.gridTemplateColumns,
+            gridTemplateRows: newFlexGrid.gridTemplateRows,
+            gridAutoFlow: newFlexGrid.gridAutoFlow
+        });
+
         if (onUpdateElement) onUpdateElement({ [prop]: value });
     };
 
@@ -322,6 +337,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                                 rows={localStyles.flexGrid?.gridTemplateRows}
                                 gap={localStyles.flexGrid?.gap}
                                 items={localStyles.flexGrid?.gridItems}
+                                autoFlow={localStyles.flexGrid?.gridAutoFlow || 'row'}
                                 onHover={handleGridHover}
                                 onLeave={handleGridLeave}
                             />

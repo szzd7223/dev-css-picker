@@ -12,9 +12,10 @@ const parseTracks = (val) => {
     return normalized.trim().split(/\s+(?![^()]*\))/);
 };
 
-export default function GridMap({ columns, rows, gap = '4px', items = [], onHover, onLeave }) {
+export default function GridMap({ columns, rows, gap = '4px', items = [], autoFlow = 'row', onHover, onLeave }) {
     const cols = parseTracks(columns);
     const rs = parseTracks(rows);
+    const isColumnFlow = autoFlow.includes('column');
 
     return (
         <div className="mt-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
@@ -37,54 +38,80 @@ export default function GridMap({ columns, rows, gap = '4px', items = [], onHove
                 {/* Background Dots */}
                 <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '12px 12px' }}></div>
 
-                <div
-                    className="grid w-full h-full gap-1 transition-all duration-300 relative"
-                    style={{
-                        gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
-                        gridTemplateRows: `repeat(${rs.length}, 1fr)`,
-                        gap: gap
-                    }}
-                >
-                    {/* Render Base Grid Cells */}
-                    {Array.from({ length: cols.length * rs.length }).map((_, i) => {
-                        const col = (i % cols.length) + 1;
-                        const row = Math.floor(i / cols.length) + 1;
-                        return (
+                <div className="relative w-full h-full">
+                    {/* Layer 1: Base Grid Cells (Background Layer) */}
+                    <div
+                        className="absolute inset-0 grid w-full h-full gap-1 pointer-events-none"
+                        style={{
+                            gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+                            gridTemplateRows: `repeat(${rs.length}, 1fr)`,
+                            gridAutoFlow: autoFlow,
+                            gap: gap
+                        }}
+                    >
+                        {Array.from({ length: cols.length * rs.length }).map((_, i) => (
                             <div
-                                key={`cell-${i}`}
-                                className="bg-slate-800/20 border border-slate-800/50 rounded-sm flex items-center justify-center relative group overflow-hidden"
-                                onMouseEnter={() => onHover && onHover({ type: 'cell', col, row })}
-                            >
-                                <div className="absolute inset-0 bg-green-500/10 border border-green-500/30 opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
-                                <span className="text-[8px] text-slate-700 font-mono">{i + 1}</span>
-                            </div>
-                        );
-                    })}
+                                key={`base-${i}`}
+                                className="bg-slate-800/10 border border-slate-800/30 rounded-sm"
+                            />
+                        ))}
+                    </div>
 
-                    {/* Render Spanning Items */}
-                    {items && items.map((item, i) => {
-                        if ((!item.gridColumn || item.gridColumn === 'auto') && (!item.gridRow || item.gridRow === 'auto')) return null;
+                    {/* Layer 2: Actual Items (Content Layer) */}
+                    <div
+                        className="absolute inset-0 grid w-full h-full gap-1 pointer-events-none"
+                        style={{
+                            gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+                            gridTemplateRows: `repeat(${rs.length}, 1fr)`,
+                            gridAutoFlow: autoFlow,
+                            gap: gap
+                        }}
+                    >
+                        {items && items.map((item, i) => {
+                            const isSpanning = (item.gridColumn && item.gridColumn !== 'auto') || (item.gridRow && item.gridRow !== 'auto');
 
-                        return (
-                            <div
-                                key={`item-${i}`}
-                                className="z-20 bg-blue-500/20 border border-blue-400/40 rounded-sm ring-1 ring-blue-500/20 flex items-center justify-center group hover:bg-green-500/20 hover:border-green-500/50 hover:ring-green-500/30 transition-all cursor-crosshair"
-                                style={{
-                                    gridColumn: item.gridColumn,
-                                    gridRow: item.gridRow
-                                }}
-                                onMouseEnter={() => onHover && onHover({ type: 'item', index: i })}
-                            >
-                                <span className="text-[8px] text-blue-300 font-bold drop-shadow-sm group-hover:text-green-300">{i + 1}</span>
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
-                            </div>
-                        );
-                    })}
+                            // Calculate position for non-spanning items for hover data
+                            // This is approximate as actual grid layout can be complex, but match autoFlow
+                            let col, row;
+                            if (!isSpanning) {
+                                if (isColumnFlow) {
+                                    row = (i % rs.length) + 1;
+                                    col = Math.floor(i / rs.length) + 1;
+                                } else {
+                                    col = (i % cols.length) + 1;
+                                    row = Math.floor(i / cols.length) + 1;
+                                }
+                            }
+
+                            return (
+                                <div
+                                    key={`item-${i}`}
+                                    className={`z-20 rounded-sm ring-1 flex items-center justify-center group transition-all cursor-crosshair pointer-events-auto
+                                    ${isSpanning
+                                            ? 'bg-blue-500/20 border border-blue-400/40 ring-blue-500/20 hover:bg-green-500/20 hover:border-green-500/50 hover:ring-green-500/30'
+                                            : 'bg-slate-700/40 border border-slate-600/40 ring-slate-700/20 hover:bg-blue-500/30 hover:border-blue-400/50'
+                                        }`}
+                                    style={{
+                                        gridColumn: item.gridColumn,
+                                        gridRow: item.gridRow,
+                                        position: isSpanning ? 'relative' : 'auto'
+                                    }}
+                                    onMouseEnter={() => onHover && onHover(isSpanning ? { type: 'item', index: i } : { type: 'cell', col, row })}
+                                >
+                                    <span className={`text-[8px] font-bold drop-shadow-sm ${isSpanning ? 'text-blue-300 group-hover:text-green-300' : 'text-slate-500 group-hover:text-blue-300'}`}>
+                                        {i + 1}
+                                    </span>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
             <p className="mt-2 text-[9px] text-slate-500 italic">
-                * Highlighted boxes represent actual child elements.
+                * Highlighted boxes represent actual child elements. Flow: {autoFlow}
             </p>
         </div>
     );
 }
+
