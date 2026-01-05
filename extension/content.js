@@ -5,6 +5,7 @@ let isPicking = false;
 let overlayContainer = null;
 let shadowRoot = null;
 let highlightBox = null;
+let cellHighlightBox = null;
 let lastElement = null;
 
 // Utility for picking elements
@@ -124,7 +125,15 @@ function getElementInfo(el) {
             columnGap: style.columnGap,
             gridTemplateColumns: style.gridTemplateColumns,
             gridTemplateRows: style.gridTemplateRows,
-            gridAutoFlow: style.gridAutoFlow
+            gridAutoFlow: style.gridAutoFlow,
+            gridItems: style.display === 'grid' || style.display === 'inline-grid' ? Array.from(el.children).map(child => {
+                const s = window.getComputedStyle(child);
+                return {
+                    gridColumn: s.gridColumn,
+                    gridRow: s.gridRow,
+                    gridArea: s.gridArea
+                };
+            }) : []
         },
         inlineStyle: {
             width: el.style.width,
@@ -184,6 +193,16 @@ function createOverlay() {
             color: rgba(255, 255, 255, 0.8);
             font-weight: 400;
         }
+        .cell-highlight {
+            position: fixed;
+            border: 2px solid #22c55e;
+            background: rgba(34, 197, 94, 0.2);
+            pointer-events: none;
+            z-index: 10001;
+            box-sizing: border-box;
+            border-radius: 2px;
+            display: none;
+        }
     `;
     shadowRoot.appendChild(style);
 
@@ -191,6 +210,10 @@ function createOverlay() {
     highlightBox.className = 'highlight-box';
     highlightBox.innerHTML = '<div class="highlight-tag"></div>';
     shadowRoot.appendChild(highlightBox);
+
+    cellHighlightBox = document.createElement('div');
+    cellHighlightBox.className = 'cell-highlight';
+    shadowRoot.appendChild(cellHighlightBox);
 }
 
 function removeOverlay() {
@@ -199,6 +222,7 @@ function removeOverlay() {
         overlayContainer = null;
         shadowRoot = null;
         highlightBox = null;
+        cellHighlightBox = null;
     }
 }
 
@@ -238,6 +262,55 @@ function updateHighlight(el) {
         highlightBox.querySelector('.highlight-tag').style.bottom = '100%';
         highlightBox.querySelector('.highlight-tag').style.borderRadius = '4px 4px 0 0';
         highlightBox.querySelector('.highlight-tag').style.marginTop = '0';
+    }
+}
+
+function updateCellHighlight(el, info) {
+    if (!cellHighlightBox) return;
+
+    if (!info) {
+        cellHighlightBox.style.display = 'none';
+        return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
+
+    if (info.type === 'item') {
+        const children = Array.from(el.children);
+        const child = children[info.index];
+        if (child) {
+            const crect = child.getBoundingClientRect();
+            cellHighlightBox.style.display = 'block';
+            cellHighlightBox.style.width = `${crect.width}px`;
+            cellHighlightBox.style.height = `${crect.height}px`;
+            cellHighlightBox.style.top = `${crect.top}px`;
+            cellHighlightBox.style.left = `${crect.left}px`;
+        }
+    } else if (info.type === 'cell') {
+        // Advanced cell coordinate calculation
+        const colTracks = style.gridTemplateColumns.split(' ').map(s => parseFloat(s));
+        const rowTracks = style.gridTemplateRows.split(' ').map(s => parseFloat(s));
+        const colGap = parseFloat(style.columnGap || style.gap) || 0;
+        const rowGap = parseFloat(style.rowGap || style.gap) || 0;
+        const paddingLeft = parseFloat(style.paddingLeft);
+        const paddingTop = parseFloat(style.paddingTop);
+
+        let x = rect.left + paddingLeft;
+        for (let i = 0; i < info.col - 1; i++) {
+            x += (colTracks[i] || 0) + colGap;
+        }
+
+        let y = rect.top + paddingTop;
+        for (let i = 0; i < info.row - 1; i++) {
+            y += (rowTracks[i] || 0) + rowGap;
+        }
+
+        cellHighlightBox.style.display = 'block';
+        cellHighlightBox.style.width = `${colTracks[info.col - 1]}px`;
+        cellHighlightBox.style.height = `${rowTracks[info.row - 1]}px`;
+        cellHighlightBox.style.top = `${y}px`;
+        cellHighlightBox.style.left = `${x}px`;
     }
 }
 
@@ -478,5 +551,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             lastElement = el;
             sendResponse(info);
         }
+    } else if (request.type === 'HIGHLIGHT_GRID_AREA') {
+        const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
+        if (el) {
+            createOverlay();
+            updateCellHighlight(el, request.payload);
+        }
+    } else if (request.type === 'CLEAR_GRID_AREA') {
+        if (cellHighlightBox) cellHighlightBox.style.display = 'none';
     }
 });

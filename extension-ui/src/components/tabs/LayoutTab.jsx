@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout } from 'lucide-react';
 import { SliderInput, SelectInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
+import GridMap from '../ui/GridMap';
 import { cleanStyleValue } from '../../utils/styleUtils';
 
 export default function LayoutTab({ selectedElement, onUpdateElement }) {
@@ -49,6 +50,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     gridTemplateColumns: selectedElement.flexGrid?.gridTemplateColumns,
                     gridTemplateRows: selectedElement.flexGrid?.gridTemplateRows,
                     gridAutoFlow: selectedElement.flexGrid?.gridAutoFlow || 'row',
+                    gridItems: selectedElement.flexGrid?.gridItems || []
                 }
             };
 
@@ -115,6 +117,33 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 handleStyleChange(property, originalStyles[property]);
             }
         }
+    };
+
+    const handleGridHover = (hoverInfo) => {
+        if (!selectedElement) return;
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    type: 'HIGHLIGHT_GRID_AREA',
+                    payload: {
+                        cpId: selectedElement.cpId,
+                        ...hoverInfo
+                    }
+                }).catch(() => { });
+            }
+        });
+    };
+
+    const handleGridLeave = () => {
+        if (!selectedElement) return;
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    type: 'CLEAR_GRID_AREA',
+                    payload: { cpId: selectedElement.cpId }
+                }).catch(() => { });
+            }
+        });
     };
 
 
@@ -286,6 +315,15 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                                     { value: 'row dense', label: 'Row Dense' },
                                     { value: 'column dense', label: 'Column Dense' },
                                 ]}
+                            />
+
+                            <GridMap
+                                columns={localStyles.flexGrid?.gridTemplateColumns}
+                                rows={localStyles.flexGrid?.gridTemplateRows}
+                                gap={localStyles.flexGrid?.gap}
+                                items={localStyles.flexGrid?.gridItems}
+                                onHover={handleGridHover}
+                                onLeave={handleGridLeave}
                             />
                         </>
                     )}
