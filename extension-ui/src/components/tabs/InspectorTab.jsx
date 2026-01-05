@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Type, Check, Copy, ArrowLeft, RefreshCw, Box } from 'lucide-react';
 import { SliderInput, SelectInput } from '../ui/StyleControls';
 import DomTree from './DomTree';
-import { generateTailwindClasses } from '../../utils/styleUtils';
+import { generateTailwindClasses, cleanStyleValue } from '../../utils/styleUtils';
 import { isRestrictedUrl } from '../../utils/browserUtils';
 
-export default function InspectorTab({ selectedElement, onSelectElement, onTabChange }) {
+export default function InspectorTab({ selectedElement, onSelectElement, onUpdateElement, onTabChange }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
     const [error, setError] = useState(null);
@@ -57,13 +57,30 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
             };
 
             const initialState = {
+                display: selectedElement.boxModel.display,
                 color: selectedElement.colors.text,
+                backgroundColor: selectedElement.colors.background,
+                backgroundImage: selectedElement.colors.backgroundImage || 'none',
                 fontSize: selectedElement.typography.size,
                 fontWeight: selectedElement.typography.weight,
-                // We keep some basic dimensions for the CSS preview if needed, or remove them.
-                // Let's keep them for the "summary" CSS block even if not editable here.
                 width: selectedElement.width + 'px',
                 height: selectedElement.height + 'px',
+                padding: cleanStyleValue(selectedElement.boxModel.padding),
+                margin: cleanStyleValue(selectedElement.boxModel.margin),
+                borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
+                borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
+                borderColor: selectedElement.colors.border || 'transparent',
+                flexGrid: {
+                    flexDirection: selectedElement.flexGrid?.flexDirection,
+                    justifyContent: selectedElement.flexGrid?.justifyContent,
+                    alignItems: selectedElement.flexGrid?.alignItems,
+                    gap: cleanStyleValue(selectedElement.flexGrid?.gap),
+                    rowGap: cleanStyleValue(selectedElement.flexGrid?.rowGap),
+                    columnGap: cleanStyleValue(selectedElement.flexGrid?.columnGap),
+                    gridTemplateColumns: selectedElement.flexGrid?.gridTemplateColumns,
+                    gridTemplateRows: selectedElement.flexGrid?.gridTemplateRows,
+                    gridAutoFlow: selectedElement.flexGrid?.gridAutoFlow || 'row',
+                }
             };
 
             setOriginalStyles(initialState);
@@ -80,7 +97,48 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
         const code = generateTailwindClasses(localStyles);
         setGeneratedCode(code);
 
-        const cssBlock = `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  font-size: ${localStyles.fontSize};\n}`;
+        // Generate a more complete CSS block
+        const cssLines = [];
+        cssLines.push(`  display: ${localStyles.display || 'block'};`);
+        if (localStyles.width) cssLines.push(`  width: ${localStyles.width};`);
+        if (localStyles.height) cssLines.push(`  height: ${localStyles.height};`);
+        cssLines.push(`  color: ${localStyles.color};`);
+        if (localStyles.backgroundColor && localStyles.backgroundColor !== 'transparent') {
+            cssLines.push(`  background-color: ${localStyles.backgroundColor};`);
+        }
+        cssLines.push(`  font-size: ${localStyles.fontSize};`);
+        cssLines.push(`  font-weight: ${localStyles.fontWeight};`);
+
+        // Add padding/margin if they exist
+        const formatSpacing = (val) => {
+            if (typeof val === 'string') return val;
+            if (typeof val === 'object') {
+                if (val.top === val.bottom && val.left === val.right) {
+                    return val.top === val.left ? val.top : `${val.top} ${val.left}`;
+                }
+                return `${val.top} ${val.right} ${val.bottom} ${val.left}`;
+            }
+            return '0px';
+        };
+
+        if (localStyles.padding) cssLines.push(`  padding: ${formatSpacing(localStyles.padding)};`);
+        if (localStyles.margin) cssLines.push(`  margin: ${formatSpacing(localStyles.margin)};`);
+
+        // Add Flex/Grid specific CSS
+        if (localStyles.display === 'flex') {
+            const fg = localStyles.flexGrid || {};
+            if (fg.flexDirection) cssLines.push(`  flex-direction: ${fg.flexDirection};`);
+            if (fg.justifyContent) cssLines.push(`  justify-content: ${fg.justifyContent};`);
+            if (fg.alignItems) cssLines.push(`  align-items: ${fg.alignItems};`);
+            if (fg.gap) cssLines.push(`  gap: ${fg.gap};`);
+        } else if (localStyles.display === 'grid') {
+            const fg = localStyles.flexGrid || {};
+            if (fg.gridTemplateColumns) cssLines.push(`  grid-template-columns: ${fg.gridTemplateColumns};`);
+            if (fg.gridAutoFlow && fg.gridAutoFlow !== 'row') cssLines.push(`  grid-auto-flow: ${fg.gridAutoFlow};`);
+            if (fg.gap) cssLines.push(`  gap: ${fg.gap};`);
+        }
+
+        const cssBlock = `${selectedElement.tagName.toLowerCase()} {\n${cssLines.join('\n')}\n}`;
         setGeneratedCss(cssBlock);
     }, [localStyles, selectedElement]);
 
@@ -108,11 +166,13 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
 
         // Send only the change to preserve other original styles on the page
         sendLiveUpdate({ [property]: value });
+        if (onUpdateElement) onUpdateElement({ [property]: value });
     };
 
     const handleReset = (property) => {
         if (originalStyles[property] !== undefined) {
             handleStyleChange(property, originalStyles[property]);
+            if (onUpdateElement) onUpdateElement({ [property]: originalStyles[property] });
         }
     };
 
@@ -297,7 +357,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onTabCh
                         <textarea
                             value={codeTab === 'tailwind'
                                 ? `<${selectedElement.tagName.toLowerCase()} class="${generatedCode}">`
-                                : `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n  width: ${localStyles.width};\n  height: ${localStyles.height};\n}`
+                                : generatedCss
                             }
                             readOnly={true}
                             className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-blue-300 resize-none focus:outline-none"

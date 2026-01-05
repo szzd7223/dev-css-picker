@@ -3,7 +3,7 @@ import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout } from 'lucide-re
 import { SliderInput, SelectInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
 import { cleanStyleValue } from '../../utils/styleUtils';
 
-export default function LayoutTab({ selectedElement }) {
+export default function LayoutTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
 
@@ -48,6 +48,7 @@ export default function LayoutTab({ selectedElement }) {
                     columnGap: cleanStyleValue(selectedElement.flexGrid?.columnGap),
                     gridTemplateColumns: selectedElement.flexGrid?.gridTemplateColumns,
                     gridTemplateRows: selectedElement.flexGrid?.gridTemplateRows,
+                    gridAutoFlow: selectedElement.flexGrid?.gridAutoFlow || 'row',
                 }
             };
 
@@ -75,6 +76,7 @@ export default function LayoutTab({ selectedElement }) {
         const nextStyles = { ...localStyles, [property]: value };
         setLocalStyles(nextStyles);
         sendLiveUpdate({ [property]: value });
+        if (onUpdateElement) onUpdateElement({ [property]: value });
     };
 
     const handleFlexGridChange = (prop, value) => {
@@ -82,6 +84,7 @@ export default function LayoutTab({ selectedElement }) {
         const nextStyles = { ...localStyles, flexGrid: newFlexGrid };
         setLocalStyles(nextStyles);
         sendLiveUpdate({ [prop]: value });
+        if (onUpdateElement) onUpdateElement({ [prop]: value });
     };
 
     const handleGridPreset = (prop, count) => {
@@ -270,6 +273,18 @@ export default function LayoutTab({ selectedElement }) {
                                     { value: '3', label: '3 Rows' },
                                     { value: '4', label: '4 Rows' },
                                     { value: 'custom', label: 'Custom' },
+                                ]}
+                            />
+                            <SelectInput
+                                label="Auto Flow"
+                                value={localStyles.flexGrid?.gridAutoFlow || 'row'}
+                                onChange={(val) => handleFlexGridChange('gridAutoFlow', val)}
+                                options={[
+                                    { value: 'row', label: 'Row' },
+                                    { value: 'column', label: 'Column' },
+                                    { value: 'dense', label: 'Dense' },
+                                    { value: 'row dense', label: 'Row Dense' },
+                                    { value: 'column dense', label: 'Column Dense' },
                                 ]}
                             />
                         </>

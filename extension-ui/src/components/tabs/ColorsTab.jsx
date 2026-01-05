@@ -4,7 +4,7 @@ import { SliderInput, ColorInput, SelectInput } from '../ui/StyleControls';
 import { parseGradient, buildGradientString } from '../../utils/gradientParser';
 import { cleanStyleValue } from '../../utils/styleUtils';
 
-export default function ColorsTab({ selectedElement }) {
+export default function ColorsTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
 
@@ -42,6 +42,7 @@ export default function ColorsTab({ selectedElement }) {
         const nextStyles = { ...localStyles, [property]: value };
         setLocalStyles(nextStyles);
         sendLiveUpdate({ [property]: value });
+        if (onUpdateElement) onUpdateElement({ [property]: value });
     };
 
     const handleReset = (property) => {

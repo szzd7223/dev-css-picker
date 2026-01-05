@@ -146,6 +146,72 @@ function App() {
     }
   };
 
+  const onUpdateElement = (updatedStyles) => {
+    setInspectorData(prev => {
+      if (!prev) return null;
+
+      // Create a shallow copy of prev
+      const newData = { ...prev };
+
+      // Update specific top-level layout properties
+      if (updatedStyles.width !== undefined) newData.width = parseInt(updatedStyles.width) || prev.width;
+      if (updatedStyles.height !== undefined) newData.height = parseInt(updatedStyles.height) || prev.height;
+
+      // Update nested objects immutably
+      if (updatedStyles.display) {
+        newData.boxModel = { ...newData.boxModel, display: updatedStyles.display };
+      }
+
+      const boxProps = ['padding', 'margin', 'borderRadius', 'borderWidth', 'borderStyle'];
+      boxProps.forEach(p => {
+        if (updatedStyles[p] !== undefined) {
+          newData.boxModel = { ...newData.boxModel, [p]: updatedStyles[p] };
+        }
+      });
+
+      const posProps = ['position', 'top', 'right', 'bottom', 'left', 'zIndex'];
+      posProps.forEach(p => {
+        if (updatedStyles[p] !== undefined) {
+          newData.positioning = { ...newData.positioning, [p]: updatedStyles[p] };
+        }
+      });
+
+      const colorMapping = {
+        color: 'text',
+        backgroundColor: 'background',
+        backgroundImage: 'backgroundImage',
+        borderColor: 'border'
+      };
+      Object.entries(colorMapping).forEach(([prop, key]) => {
+        if (updatedStyles[prop] !== undefined) {
+          newData.colors = { ...newData.colors, [key]: updatedStyles[prop] };
+        }
+      });
+
+      const fgProps = ['flexDirection', 'justifyContent', 'alignItems', 'gap', 'rowGap', 'columnGap', 'gridTemplateColumns', 'gridTemplateRows', 'gridAutoFlow'];
+      fgProps.forEach(p => {
+        if (updatedStyles[p] !== undefined) {
+          newData.flexGrid = { ...newData.flexGrid, [p]: updatedStyles[p] };
+        }
+      });
+
+      // Handle direct flexGrid object update
+      if (updatedStyles.flexGrid) {
+        newData.flexGrid = { ...newData.flexGrid, ...updatedStyles.flexGrid };
+      }
+
+      // Typography
+      if (updatedStyles.fontSize) {
+        newData.typography = { ...newData.typography, size: updatedStyles.fontSize };
+      }
+      if (updatedStyles.fontWeight) {
+        newData.typography = { ...newData.typography, weight: updatedStyles.fontWeight };
+      }
+
+      return newData;
+    });
+  };
+
   const handleToggleInspect = () => {
     setIsInspectMode(prev => !prev);
   };
@@ -225,6 +291,7 @@ function App() {
             key={inspectorData?.cpId || 'no-selection'}
             selectedElement={inspectorData}
             onSelectElement={setInspectorData}
+            onUpdateElement={onUpdateElement}
             onTabChange={handleTabChange}
             codeTab={codeTab}
             setCodeTab={setCodeTab}
@@ -240,8 +307,8 @@ function App() {
           />
         )
       }
-      {activeTab === 'layout' && <LayoutTab selectedElement={inspectorData} />}
-      {activeTab === 'colors' && <ColorsTab selectedElement={inspectorData} />}
+      {activeTab === 'layout' && <LayoutTab selectedElement={inspectorData} onUpdateElement={onUpdateElement} />}
+      {activeTab === 'colors' && <ColorsTab selectedElement={inspectorData} onUpdateElement={onUpdateElement} />}
       {activeTab === 'profile' && <ProfileTab />}
     </SidebarLayout >
   )

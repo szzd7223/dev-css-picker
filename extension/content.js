@@ -123,7 +123,8 @@ function getElementInfo(el) {
             rowGap: style.rowGap,
             columnGap: style.columnGap,
             gridTemplateColumns: style.gridTemplateColumns,
-            gridTemplateRows: style.gridTemplateRows
+            gridTemplateRows: style.gridTemplateRows,
+            gridAutoFlow: style.gridAutoFlow
         },
         hierarchy: getShallowHierarchy(el)
     };
