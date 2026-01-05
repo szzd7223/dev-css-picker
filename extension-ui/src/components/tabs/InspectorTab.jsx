@@ -63,8 +63,14 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
                 backgroundImage: selectedElement.colors.backgroundImage || 'none',
                 fontSize: selectedElement.typography.size,
                 fontWeight: selectedElement.typography.weight,
-                width: selectedElement.width + 'px',
-                height: selectedElement.height + 'px',
+                width: selectedElement.inlineStyle?.width || (selectedElement.width + 'px'),
+                height: selectedElement.inlineStyle?.height || (selectedElement.height + 'px'),
+                position: selectedElement.positioning?.position || 'static',
+                top: cleanStyleValue(selectedElement.positioning?.top),
+                right: cleanStyleValue(selectedElement.positioning?.right),
+                bottom: cleanStyleValue(selectedElement.positioning?.bottom),
+                left: cleanStyleValue(selectedElement.positioning?.left),
+                zIndex: selectedElement.positioning?.zIndex,
                 padding: cleanStyleValue(selectedElement.boxModel.padding),
                 margin: cleanStyleValue(selectedElement.boxModel.margin),
                 borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
@@ -105,6 +111,13 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
         cssLines.push(`  color: ${localStyles.color};`);
         if (localStyles.backgroundColor && localStyles.backgroundColor !== 'transparent') {
             cssLines.push(`  background-color: ${localStyles.backgroundColor};`);
+        }
+        if (localStyles.position && localStyles.position !== 'static') {
+            cssLines.push(`  position: ${localStyles.position};`);
+            if (localStyles.top) cssLines.push(`  top: ${localStyles.top};`);
+            if (localStyles.right) cssLines.push(`  right: ${localStyles.right};`);
+            if (localStyles.bottom) cssLines.push(`  bottom: ${localStyles.bottom};`);
+            if (localStyles.left) cssLines.push(`  left: ${localStyles.left};`);
         }
         cssLines.push(`  font-size: ${localStyles.fontSize};`);
         cssLines.push(`  font-weight: ${localStyles.fontWeight};`);

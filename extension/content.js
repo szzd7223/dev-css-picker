@@ -126,6 +126,10 @@ function getElementInfo(el) {
             gridTemplateRows: style.gridTemplateRows,
             gridAutoFlow: style.gridAutoFlow
         },
+        inlineStyle: {
+            width: el.style.width,
+            height: el.style.height
+        },
         hierarchy: getShallowHierarchy(el)
     };
 }

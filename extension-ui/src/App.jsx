@@ -154,8 +154,14 @@ function App() {
       const newData = { ...prev };
 
       // Update specific top-level layout properties
-      if (updatedStyles.width !== undefined) newData.width = parseInt(updatedStyles.width) || prev.width;
-      if (updatedStyles.height !== undefined) newData.height = parseInt(updatedStyles.height) || prev.height;
+      if (updatedStyles.width !== undefined) {
+        newData.width = updatedStyles.width;
+        newData.inlineStyle = { ...newData.inlineStyle, width: updatedStyles.width };
+      }
+      if (updatedStyles.height !== undefined) {
+        newData.height = updatedStyles.height;
+        newData.inlineStyle = { ...newData.inlineStyle, height: updatedStyles.height };
+      }
 
       // Update nested objects immutably
       if (updatedStyles.display) {

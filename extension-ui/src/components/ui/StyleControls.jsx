@@ -60,7 +60,7 @@ const parseValue = (val) => {
     };
 };
 
-export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allowAuto = false, originalValue, onReset }) => {
+export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allowAuto = false, originalValue, onReset, placeholderValue }) => {
     const { num, unit, isAuto } = parseValue(value);
     const isChanged = originalValue !== undefined && value !== originalValue;
     const [showUnits, setShowUnits] = useState(false);
@@ -83,7 +83,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 
     const toggleAuto = () => {
         if (isAuto) {
-            onChange(`0${unit}`);
+            onChange(`${placeholderValue || 0}${unit}`);
         } else {
             onChange('auto');
         }
@@ -116,27 +116,23 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 
                     {/* Value Display & Unit Selector */}
                     <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 focus-within:border-blue-500/50 transition-colors">
-                        {isAuto ? (
-                            <span className="text-xs font-mono font-bold text-slate-500 mr-1 min-w-[20px] text-right">-</span>
-                        ) : (
-                            <input
-                                type="text"
-                                value={num}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    // Allow empty or minus sign for typing, but parse for valid numbers
-                                    if (val === '' || val === '-') {
-                                        onChange(`${val}${unit}`);
-                                        return;
-                                    }
-                                    const parsed = parseFloat(val);
-                                    if (!isNaN(parsed)) {
-                                        onChange(`${val}${unit}`);
-                                    }
-                                }}
-                                className="w-10 text-xs font-mono font-bold text-slate-200 bg-transparent border-none p-0 text-right outline-none focus:ring-0 appearance-none"
-                            />
-                        )}
+                        <input
+                            type="text"
+                            value={isAuto ? (placeholderValue || '') : num}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                // Allow empty or minus sign for typing
+                                if (val === '' || val === '-') {
+                                    onChange(`${val}${unit}`);
+                                    return;
+                                }
+                                const parsed = parseFloat(val);
+                                if (!isNaN(parsed)) {
+                                    onChange(`${val}${unit}`);
+                                }
+                            }}
+                            className={`w-10 text-xs font-mono font-bold border-none p-0 text-right outline-none focus:ring-0 appearance-none bg-transparent ${isAuto ? 'text-slate-500' : 'text-slate-200'}`}
+                        />
                         {!isAuto && (
                             <div className="relative">
                                 <button

@@ -29,8 +29,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
 
             const initialState = {
                 display: selectedElement.boxModel.display,
-                width: selectedElement.width + 'px',
-                height: selectedElement.height + 'px',
+                width: selectedElement.inlineStyle?.width || (selectedElement.width + 'px'),
+                height: selectedElement.inlineStyle?.height || (selectedElement.height + 'px'),
                 position: selectedElement.positioning?.position || 'static',
                 top: cleanStyleValue(selectedElement.positioning?.top),
                 right: cleanStyleValue(selectedElement.positioning?.right),
@@ -147,8 +147,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     ]}
                 />
                 <div className="grid grid-cols-2 gap-4">
-                    <SliderInput label="Width" value={localStyles.width} onChange={(val) => handleStyleChange('width', val)} min={0} max={1000} allowAuto />
-                    <SliderInput label="Height" value={localStyles.height} onChange={(val) => handleStyleChange('height', val)} min={0} max={1000} allowAuto />
+                    <SliderInput label="Width" value={localStyles.width} onChange={(val) => handleStyleChange('width', val)} min={0} max={1000} allowAuto placeholderValue={selectedElement.width} />
+                    <SliderInput label="Height" value={localStyles.height} onChange={(val) => handleStyleChange('height', val)} min={0} max={1000} allowAuto placeholderValue={selectedElement.height} />
                 </div>
             </section>
 
@@ -171,10 +171,10 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 />
                 {localStyles.position !== 'static' && (
                     <div className="grid grid-cols-2 gap-4">
-                        <SliderInput label="Top" value={localStyles.top} onChange={(val) => handleStyleChange('top', val)} min={-100} max={500} allowAuto />
-                        <SliderInput label="Right" value={localStyles.right} onChange={(val) => handleStyleChange('right', val)} min={-100} max={500} allowAuto />
-                        <SliderInput label="Bottom" value={localStyles.bottom} onChange={(val) => handleStyleChange('bottom', val)} min={-100} max={500} allowAuto />
-                        <SliderInput label="Left" value={localStyles.left} onChange={(val) => handleStyleChange('left', val)} min={-100} max={500} allowAuto />
+                        <SliderInput label="Top" value={localStyles.top} onChange={(val) => handleStyleChange('top', val)} min={-100} max={500} allowAuto placeholderValue={(() => { const n = parseFloat(selectedElement.positioning?.top); return isNaN(n) ? 0 : n; })()} />
+                        <SliderInput label="Right" value={localStyles.right} onChange={(val) => handleStyleChange('right', val)} min={-100} max={500} allowAuto placeholderValue={(() => { const n = parseFloat(selectedElement.positioning?.right); return isNaN(n) ? 0 : n; })()} />
+                        <SliderInput label="Bottom" value={localStyles.bottom} onChange={(val) => handleStyleChange('bottom', val)} min={-100} max={500} allowAuto placeholderValue={(() => { const n = parseFloat(selectedElement.positioning?.bottom); return isNaN(n) ? 0 : n; })()} />
+                        <SliderInput label="Left" value={localStyles.left} onChange={(val) => handleStyleChange('left', val)} min={-100} max={500} allowAuto placeholderValue={(() => { const n = parseFloat(selectedElement.positioning?.left); return isNaN(n) ? 0 : n; })()} />
                     </div>
                 )}
             </section>
@@ -319,7 +319,27 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     onChange={(val) => handleStyleChange('borderRadius', val)}
                     originalValues={originalStyles.borderRadius}
                     onReset={() => handleReset('borderRadius')}
-                    max={100}
+                    max={(() => {
+                        const parseDim = (val) => {
+                            if (!val) return 0;
+                            const num = parseFloat(val);
+                            return isNaN(num) ? 0 : num;
+                        };
+
+                        // Try local styles first (user editing)
+                        let w = parseDim(localStyles.width);
+                        let h = parseDim(localStyles.height);
+
+                        // Fallback to computed element dimensions if local is unusable (e.g. auto/%/0)
+                        if (w <= 0 && selectedElement?.width) w = selectedElement.width;
+                        if (h <= 0 && selectedElement?.height) h = selectedElement.height;
+
+                        // If we have valid dimensions, use min(w,h)/2
+                        if (w > 0 && h > 0) return Math.min(w, h) / 2;
+
+                        // Absolute fallback if everything fails
+                        return 100;
+                    })()}
                 />
             </section>
         </div>

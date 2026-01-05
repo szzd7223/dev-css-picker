@@ -180,6 +180,22 @@ export function generateTailwindClasses(styles) {
     if (styles.borderWidth && styles.borderWidth !== '0px') classes.push(`border-[${styles.borderWidth}]`);
     if (styles.borderColor) classes.push(getTwColor(styles.borderColor, 'border'));
 
+    // Positioning
+    if (styles.position && styles.position !== 'static') {
+        const pMap = { 'relative': 'relative', 'absolute': 'absolute', 'fixed': 'fixed', 'sticky': 'sticky' };
+        if (pMap[styles.position]) classes.push(pMap[styles.position]);
+
+        const handlePos = (prop, prefix) => {
+            if (styles[prop] === 'auto') classes.push(`${prefix}-auto`);
+            else if (styles[prop]) classes.push(getTwClassFromScale(styles[prop], prefix, SPACING_SCALE));
+        };
+        handlePos('top', 'top');
+        handlePos('right', 'right');
+        handlePos('bottom', 'bottom');
+        handlePos('left', 'left');
+    }
+    if (styles.zIndex && styles.zIndex !== 'auto') classes.push(`z-[${styles.zIndex}]`);
+
     return classes.join(' ');
 }
 
