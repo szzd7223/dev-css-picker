@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout } from 'lucide-react';
-import { SliderInput, SelectInput, SpacingInput, RadiusInput } from '../ui/StyleControls';
+import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout, Equal } from 'lucide-react';
+import { SliderInput, SelectInput, SpacingInput, RadiusInput, convertToPx, convertFromPx } from '../ui/StyleControls';
 import GridMap from '../ui/GridMap';
 import { cleanStyleValue } from '../../utils/styleUtils';
 
 export default function LayoutTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
+    const [computedGrid, setComputedGrid] = useState(null);
 
     // Sync state with selected element
     useEffect(() => {
@@ -38,16 +39,16 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 bottom: cleanStyleValue(selectedElement.positioning?.bottom),
                 left: cleanStyleValue(selectedElement.positioning?.left),
                 padding: {
-                    top: selectedElement.boxModel.padding?.top || '0px',
-                    right: selectedElement.boxModel.padding?.right || '0px',
-                    bottom: selectedElement.boxModel.padding?.bottom || '0px',
-                    left: selectedElement.boxModel.padding?.left || '0px'
+                    top: selectedElement.inlineStyle?.paddingTop || selectedElement.boxModel.padding?.top || '0px',
+                    right: selectedElement.inlineStyle?.paddingRight || selectedElement.boxModel.padding?.right || '0px',
+                    bottom: selectedElement.inlineStyle?.paddingBottom || selectedElement.boxModel.padding?.bottom || '0px',
+                    left: selectedElement.inlineStyle?.paddingLeft || selectedElement.boxModel.padding?.left || '0px'
                 },
                 margin: {
-                    top: selectedElement.boxModel.margin?.top || '0px',
-                    right: selectedElement.boxModel.margin?.right || '0px',
-                    bottom: selectedElement.boxModel.margin?.bottom || '0px',
-                    left: selectedElement.boxModel.margin?.left || '0px'
+                    top: selectedElement.inlineStyle?.marginTop || selectedElement.boxModel.margin?.top || '0px',
+                    right: selectedElement.inlineStyle?.marginRight || selectedElement.boxModel.margin?.right || '0px',
+                    bottom: selectedElement.inlineStyle?.marginBottom || selectedElement.boxModel.margin?.bottom || '0px',
+                    left: selectedElement.inlineStyle?.marginLeft || selectedElement.boxModel.margin?.left || '0px'
                 },
                 borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
                 flexGrid: {
@@ -66,10 +67,16 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
 
             setOriginalStyles(initialState);
             setLocalStyles(initialState);
+            // Initialize computed grid from initial data
+            setComputedGrid({
+                columns: selectedElement.flexGrid?.gridTemplateColumns,
+                rows: selectedElement.flexGrid?.gridTemplateRows,
+                items: selectedElement.flexGrid?.gridItems
+            });
         }
     }, [selectedElement]);
 
-    const sendLiveUpdate = (updatedStyles) => {
+    const sendLiveUpdate = (updatedStyles, callback) => {
         if (!selectedElement) return;
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
@@ -79,7 +86,11 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                         cpId: selectedElement.cpId,
                         styles: updatedStyles
                     }
-                }).catch(() => { });
+                })
+                    .then((response) => {
+                        if (callback && response) callback(response);
+                    })
+                    .catch(() => { });
             }
         });
     };
@@ -94,8 +105,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
     const handleFlexGridChange = (prop, value) => {
         const newFlexGrid = { ...localStyles.flexGrid, [prop]: value };
 
-        // If master gap is changed, sync row/col gap to it so it takes effect
-        // (Since computed styles populate row/col gap, they would otherwise override the new gap value)
+        // If master gap is changed, sync row/col gap to it
         if (prop === 'gap') {
             newFlexGrid.rowGap = value;
             newFlexGrid.columnGap = value;
@@ -104,22 +114,32 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
         const nextStyles = { ...localStyles, flexGrid: newFlexGrid };
         setLocalStyles(nextStyles);
 
-        // Sync the entire flex/grid state to the element to ensure consistency
-        // especially when properties like auto-flow depend on template-rows/cols
-        sendLiveUpdate({
-            display: localStyles.display,
-            flexDirection: newFlexGrid.flexDirection,
-            justifyContent: newFlexGrid.justifyContent,
-            alignItems: newFlexGrid.alignItems,
-            gap: newFlexGrid.gap,
-            rowGap: newFlexGrid.rowGap,
-            columnGap: newFlexGrid.columnGap,
-            gridTemplateColumns: newFlexGrid.gridTemplateColumns,
-            gridTemplateRows: newFlexGrid.gridTemplateRows,
-            gridAutoFlow: newFlexGrid.gridAutoFlow
+        // Send only the relevant change to prevent interference
+        const updatePayload = { [prop]: value };
+
+        // If gap was changed, we must also send rowGap/columnGap to the element
+        // because shorthand 'gap' might be overridden by computed row-gap/column-gap
+        if (prop === 'gap') {
+            updatePayload.rowGap = value;
+            updatePayload.columnGap = value;
+        }
+
+        sendLiveUpdate(updatePayload, (newInfo) => {
+            if (newInfo && newInfo.flexGrid) {
+                setComputedGrid({
+                    columns: newInfo.flexGrid.gridTemplateColumns,
+                    rows: newInfo.flexGrid.gridTemplateRows,
+                    items: newInfo.flexGrid.gridItems
+                });
+            }
         });
 
         if (onUpdateElement) onUpdateElement({ [prop]: value });
+    };
+
+    const handleSyncGaps = () => {
+        const value = localStyles.flexGrid?.rowGap || '0px';
+        handleFlexGridChange('gap', value);
     };
 
     const handleGridPreset = (prop, count) => {
@@ -251,17 +271,35 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
 
                     {/* GAP */}
                     <div className="pb-4 border-b border-slate-700 mb-4">
-                        <SliderInput
-                            label="Gap"
-                            value={localStyles.flexGrid?.gap || '0px'}
-                            onChange={(val) => handleFlexGridChange('gap', val)}
-                            min={0} max={100}
-                        />
+                        {/* Master Gap */}
+                        <div className="relative group/gap">
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="text-xs font-medium text-slate-400 uppercase">Gap</label>
+                                {localStyles.flexGrid?.rowGap !== localStyles.flexGrid?.columnGap && (
+                                    <button
+                                        onClick={handleSyncGaps}
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
+                                        title="Sync Row and Column gaps"
+                                    >
+                                        <Equal size={10} />
+                                        <span>Make Even</span>
+                                    </button>
+                                )}
+                            </div>
+                            <SliderInput
+                                label={null}
+                                value={localStyles.flexGrid?.gap || '0px'}
+                                onChange={(val) => handleFlexGridChange('gap', val)}
+                                min={0} max={100}
+                                disabled={localStyles.flexGrid?.rowGap !== localStyles.flexGrid?.columnGap}
+                            />
+                        </div>
+
                         {localStyles.display === 'grid' && (
-                            <>
+                            <div className="grid grid-cols-2 gap-4 mt-2">
                                 <SliderInput label="Row Gap" value={localStyles.flexGrid?.rowGap || localStyles.flexGrid?.gap || '0px'} onChange={(val) => handleFlexGridChange('rowGap', val)} min={0} max={100} />
                                 <SliderInput label="Col Gap" value={localStyles.flexGrid?.columnGap || localStyles.flexGrid?.gap || '0px'} onChange={(val) => handleFlexGridChange('columnGap', val)} min={0} max={100} />
-                            </>
+                            </div>
                         )}
                     </div>
 
@@ -351,10 +389,10 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                             />
 
                             <GridMap
-                                columns={localStyles.flexGrid?.gridTemplateColumns}
-                                rows={localStyles.flexGrid?.gridTemplateRows}
+                                columns={computedGrid?.columns || localStyles.flexGrid?.gridTemplateColumns}
+                                rows={computedGrid?.rows || localStyles.flexGrid?.gridTemplateRows}
                                 gap={localStyles.flexGrid?.gap}
-                                items={localStyles.flexGrid?.gridItems}
+                                items={computedGrid?.items || localStyles.flexGrid?.gridItems}
                                 autoFlow={localStyles.flexGrid?.gridAutoFlow || 'row'}
                                 onHover={handleGridHover}
                                 onLeave={handleGridLeave}
@@ -375,6 +413,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     onChange={(val) => handleStyleChange('padding', val)}
                     originalValues={originalStyles.padding}
                     onReset={() => handleReset('padding')}
+                    placeholderValues={selectedElement.boxModel.padding}
                 />
                 <SpacingInput
                     label="Margin"
@@ -384,6 +423,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     onReset={() => handleReset('margin')}
                     min={-500}
                     max={500}
+                    allowAuto={true}
+                    placeholderValues={selectedElement.boxModel.margin}
                 />
                 <RadiusInput
                     label="Border Radius"
@@ -392,25 +433,31 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     originalValues={originalStyles.borderRadius}
                     onReset={() => handleReset('borderRadius')}
                     max={(() => {
-                        const parseDim = (val) => {
-                            if (!val) return 0;
-                            const num = parseFloat(val);
-                            return isNaN(num) ? 0 : num;
-                        };
+                        // 1. Get the current visual limit in Pixels
+                        // Fallback to computed size if auto/% is used for dimension
+                        const wPx = convertToPx(localStyles.width, selectedElement?.width || 0);
+                        const hPx = convertToPx(localStyles.height, selectedElement?.height || 0);
+                        const visualLimitPx = Math.min(wPx, hPx) / 2;
 
-                        // Try local styles first (user editing)
-                        let w = parseDim(localStyles.width);
-                        let h = parseDim(localStyles.height);
+                        // 2. Identify the unit the user is currently using for radius
+                        // RadiusInput identifies a "representative value" and its unit.
+                        // We need to convert our pixel limit into THAT unit for the slider max.
+                        const radiusObj = typeof localStyles.borderRadius === 'string'
+                            ? { topLeft: localStyles.borderRadius }
+                            : (localStyles.borderRadius || { topLeft: '0px' });
 
-                        // Fallback to computed element dimensions if local is unusable (e.g. auto/%/0)
-                        if (w <= 0 && selectedElement?.width) w = selectedElement.width;
-                        if (h <= 0 && selectedElement?.height) h = selectedElement.height;
+                        const firstVal = Object.values(radiusObj)[0] || '0px';
+                        const match = String(firstVal).match(/[a-z%]+$/);
+                        const currentRadiusUnit = match ? match[0] : 'px';
 
-                        // If we have valid dimensions, use min(w,h)/2
-                        if (w > 0 && h > 0) return Math.min(w, h) / 2;
+                        if (currentRadiusUnit === '%') return 50;
 
-                        // Absolute fallback if everything fails
-                        return 100;
+                        // Reference for % conversion is the same logic as convertToPx but we use visualLimitPx
+                        // Actually, just convert back using the dedicated utility
+                        const reference = (wPx + hPx) / 2; // Rough average or min for %? CSS says % is relative to size.
+                        // For radius, 50% means meet in middle.
+
+                        return convertFromPx(visualLimitPx, currentRadiusUnit, reference);
                     })()}
                 />
             </section>

@@ -150,13 +150,16 @@ export function generateTailwindClasses(styles) {
     // Border
     if (styles.borderRadius) {
         const val = styles.borderRadius;
-        if (typeof val === 'string') {
+        if (val === '50%') {
+            classes.push('rounded-full');
+        } else if (typeof val === 'string') {
             classes.push(getTwClassFromScale(val, 'rounded', RADIUS_SCALE));
         } else if (typeof val === 'object') {
             const { topLeft, topRight, bottomRight, bottomLeft } = val;
             // All same
             if (topLeft === topRight && topLeft === bottomRight && topLeft === bottomLeft) {
-                if (topLeft && topLeft !== '0px') classes.push(getTwClassFromScale(topLeft, 'rounded', RADIUS_SCALE));
+                if (topLeft === '50%') classes.push('rounded-full');
+                else if (topLeft && topLeft !== '0px') classes.push(getTwClassFromScale(topLeft, 'rounded', RADIUS_SCALE));
             }
             // Top/Bottom (e.g. rounded-t-lg)
             else if (topLeft === topRight && bottomLeft === bottomRight && topLeft !== bottomLeft) {
