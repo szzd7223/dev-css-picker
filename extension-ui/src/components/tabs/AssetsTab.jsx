@@ -63,42 +63,45 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
     }, [scanPage]);
 
     useEffect(() => {
-        if (selectedElement && (selectedElement.imageInfo || selectedElement.tagName === 'svg')) {
-            // Normalize info. For SVGs selected directly via inspector, we might need to construct a similar "asset info" object if it's missing
-            // But our content.js scan returns a list. If we SELECT via Inspector, `selectedElement` comes from `getElementInfo`.
-            // Let's standardise. For now, rely on `imageInfo` being present or derived.
-            // Actually, `content.js` `getElementInfo` does NOT currently attach `imageInfo` for SVGs.
-            // I should probably update `getElementInfo` for SVGs too in content.js, OR just handle standard styles here.
-            // Phase 2 Plan says "Merge: Handle SVG data".
-            // Let's assume for now we use the `assets` list to pick, which gives us the specific CPID.
-            // When picking from list, we get `onSelectElement` which updates `selectedElement`.
-            // `selectedElement` has styles.
+        if (selectedElement?.imageInfo) {
+            const styles = selectedElement.imageInfo.styles;
 
-            const styles = selectedElement.imageInfo?.styles || {
-                width: selectedElement.width,
-                height: selectedElement.height,
-                opacity: selectedElement.colors?.opacity || 1
-            }; // Fallback for raw elements
+            let borderRadius = parseFloat(styles.borderRadius) || 0;
+            const w = selectedElement.width || 0;
+            const h = selectedElement.height || 0;
+
+            // Detect if it is a circle
+            if (w > 0 && h > 0) {
+                const minSide = Math.min(w, h);
+                if (borderRadius >= minSide / 2 - 1) { // -1 tolerance
+                    borderRadius = '50%';
+                }
+            }
 
             const initialState = {
                 width: selectedElement.width + 'px',
                 height: selectedElement.height + 'px',
-                borderRadius: styles.borderRadius,
-                opacity: styles.opacity,
+                borderRadius: borderRadius,
+                opacity: parseFloat(styles.opacity), // Leave raw to handle 0/1 properly
                 objectFit: styles.objectFit,
                 objectPosition: styles.objectPosition,
                 backgroundSize: styles.backgroundSize,
                 backgroundPosition: styles.backgroundPosition,
                 backgroundRepeat: styles.backgroundRepeat,
                 overflow: styles.overflow || 'visible',
-                zIndex: styles.zIndex
+                zIndex: styles.zIndex === 'auto' ? 0 : (parseInt(styles.zIndex) || 0),
+                position: styles.position
             };
+
+            // Safety measure for NaN opacity
+            if (isNaN(initialState.opacity)) initialState.opacity = 1;
+
             setLocalStyles(initialState);
             setOriginalStyles(initialState);
 
-            const w = parseInt(initialState.width) || 0;
-            const h = parseInt(initialState.height) || 0;
-            if (h > 0) setAspectRatio(w / h);
+            const initialW = parseInt(initialState.width) || 0;
+            const initialH = parseInt(initialState.height) || 0;
+            if (initialH > 0) setAspectRatio(initialW / initialH);
         }
     }, [selectedElement]);
 
@@ -110,9 +113,6 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
                     payload: { cpId: asset.cpId }
                 }, (response) => {
                     if (response) {
-                        // Inject the asset info from our scan into the response so we have the 'type' context
-                        // This is a client-side merge because getElementInfo might not know about the "Asset Type" context we derived during scan
-                        response.imageInfo = asset;
                         onSelectElement(response);
                     }
                 });
@@ -124,6 +124,12 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
     const handleStyleChange = (property, value) => {
         let updates = { [property]: value };
 
+        // Handle Z-Index auto-positioning
+        if (property === 'zIndex' && localStyles.position === 'static') {
+            updates.position = 'relative';
+            // We should notify or just do it. For now, just do it.
+        }
+
         if (lockAspectRatio && (property === 'width' || property === 'height')) {
             if (property === 'width') {
                 const val = parseInt(value) || 0;
@@ -134,6 +140,11 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
                 const newWidth = Math.round(val * aspectRatio);
                 updates.width = `${newWidth}px`;
             }
+        }
+
+        // Format specific values if needed
+        if (property === 'borderRadius' && typeof value === 'number') {
+            updates.borderRadius = `${value}px`;
         }
 
         setLocalStyles(prev => ({ ...prev, ...updates }));
@@ -152,11 +163,32 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
         }
     };
 
+    // Quick Shape Helper
+    const applyQuickShape = (shape) => {
+        let radius = '0px';
+        if (shape === 'rounded') radius = '12px';
+        if (shape === 'circle') radius = '50%';
+
+        handleStyleChange('borderRadius', radius);
+
+        // Update local state is handled by handleStyleChange usually, but if we need slider state:
+        if (shape !== 'rounded') {
+            // Force local update if logic depends on it immediately
+            setLocalStyles(p => ({ ...p, borderRadius: radius }));
+        } else {
+            setLocalStyles(p => ({ ...p, borderRadius: 12 }));
+        }
+    };
+
     const handleReset = (property) => {
         if (originalStyles[property] !== undefined) {
             handleStyleChange(property, originalStyles[property]);
         }
     };
+
+    // Check if border radius is in a "custom" state (meaning, not 0 and not 50%)
+    // Or if it is currently being edited (we can assume if it's not 0 or 50%, it's custom/rounded)
+    const isRadiusCustom = localStyles.borderRadius !== 0 && localStyles.borderRadius !== '0px' && localStyles.borderRadius !== '50%';
 
     const copyUrl = () => {
         if (selectedElement?.imageInfo?.url) {
@@ -277,7 +309,7 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
                 )}
             </div>
 
-            {selectedElement ? (
+            {selectedElement?.imageInfo ? (
                 <div className="space-y-6">
                     {/* Selected Asset Info */}
                     <div className="bg-slate-800 rounded-xl border border-blue-500/30 p-4 relative overflow-hidden">
@@ -453,45 +485,85 @@ export default function AssetsTab({ selectedElement, onSelectElement, onTabChang
 
                     {/* Styling Helpers */}
                     <ControlSection title="Styling Helpers" icon={Smartphone}>
-                        <SliderInput
-                            label="Border Radius"
-                            value={localStyles.borderRadius}
-                            onChange={(val) => handleStyleChange('borderRadius', val)}
-                            originalValue={originalStyles.borderRadius}
-                            onReset={() => handleReset('borderRadius')}
-                            min={0} max={100}
-                        />
+                        {/* Quick Shapes */}
+                        <div className="mb-4">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-2">Quick Shapes</span>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => applyQuickShape('square')}
+                                    className={`p-2 bg-slate-800 border rounded hover:border-slate-500 transition-colors ${localStyles.borderRadius === 0 || localStyles.borderRadius === '0px' ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700'}`}
+                                    title="Square"
+                                >
+                                    <div className="w-4 h-4 bg-slate-400"></div>
+                                </button>
+                                <button
+                                    onClick={() => applyQuickShape('rounded')}
+                                    className={`p-2 bg-slate-800 border rounded hover:border-slate-500 transition-colors ${isRadiusCustom ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700'}`}
+                                    title="Rounded"
+                                >
+                                    <div className="w-4 h-4 bg-slate-400 rounded-md"></div>
+                                </button>
+                                <button
+                                    onClick={() => applyQuickShape('circle')}
+                                    className={`p-2 bg-slate-800 border rounded hover:border-slate-500 transition-colors ${localStyles.borderRadius === '50%' ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700'}`}
+                                    title="Circle"
+                                >
+                                    <div className="w-4 h-4 bg-slate-400 rounded-full"></div>
+                                </button>
+                            </div>
+                        </div>
+
+                        {isRadiusCustom && (
+                            <SliderInput
+                                label="Border Radius"
+                                value={parseInt(localStyles.borderRadius) || 0}
+                                onChange={(val) => handleStyleChange('borderRadius', val)}
+                                originalValue={parseInt(originalStyles.borderRadius) || 0}
+                                onReset={() => handleReset('borderRadius')}
+                                min={0} max={100}
+                            />
+                        )}
+
                         <SliderInput
                             label="Opacity"
                             value={localStyles.opacity}
                             onChange={(val) => handleStyleChange('opacity', val)}
                             originalValue={originalStyles.opacity}
                             onReset={() => handleReset('opacity')}
-                            min={0} max={1}
-                        />
-                        <SliderInput
-                            label="Z-Index"
-                            value={localStyles.zIndex}
-                            onChange={(val) => handleStyleChange('zIndex', val)}
-                            originalValue={originalStyles.zIndex}
-                            onReset={() => handleReset('zIndex')}
-                            min={0} max={100}
+                            min={0} max={1} step={0.01}
+                            unitless
                         />
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
-                            <span className="text-xs font-medium text-slate-400 uppercase">Overflow</span>
-                            <div className="flex gap-1">
-                                {['visible', 'hidden'].map(mode => (
-                                    <button
-                                        key={mode}
-                                        onClick={() => handleStyleChange('overflow', mode)}
-                                        className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all border ${localStyles.overflow === mode ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
-                                    >
-                                        {mode}
-                                    </button>
-                                ))}
+                        <div className="space-y-4 pt-2">
+                            <div className="relative group">
+                                <SliderInput
+                                    label="Z-Index"
+                                    value={localStyles.zIndex}
+                                    onChange={(val) => handleStyleChange('zIndex', val)}
+                                    originalValue={originalStyles.zIndex}
+                                    onReset={() => handleReset('zIndex')}
+                                    min={0} max={99999}
+                                    unitless
+                                    hideSlider
+                                />
+                                <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-[10px] text-slate-400 px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
+                                    Stack Order
+                                </div>
                             </div>
+
+                            {localStyles.position === 'static' && (
+                                <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 p-2 rounded-lg">
+                                    <div className="mt-0.5 text-blue-400">
+                                        <Layers size={12} />
+                                    </div>
+                                    <p className="text-[10px] text-blue-300/90 leading-tight">
+                                        Z-Index requires positioning. Changing it will set <code>position: relative</code>.
+                                    </p>
+                                </div>
+                            )}
                         </div>
+
+
                     </ControlSection>
                 </div>
             ) : (

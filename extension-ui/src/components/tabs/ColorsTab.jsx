@@ -16,7 +16,7 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                 backgroundImage: selectedElement.colors.backgroundImage || 'none',
                 borderColor: selectedElement.colors.border || 'transparent',
                 borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
-                borderStyle: selectedElement.boxModel.borderStyle || 'solid',
+                borderStyle: selectedElement.boxModel.borderStyle || 'none',
             };
             setOriginalStyles(initialState);
             setLocalStyles(initialState);
@@ -87,7 +87,22 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                         <SliderInput
                             label="Width"
                             value={localStyles.borderWidth}
-                            onChange={(val) => handleStyleChange('borderWidth', val)}
+                            onChange={(val) => {
+                                const numVal = parseFloat(val);
+                                // Auto-enable border style if width is increased
+                                if (numVal > 0 && (localStyles.borderStyle === 'none' || !localStyles.borderStyle)) {
+                                    const nextStyles = {
+                                        ...localStyles,
+                                        borderWidth: val,
+                                        borderStyle: 'solid'
+                                    };
+                                    setLocalStyles(nextStyles);
+                                    sendLiveUpdate({ borderWidth: val, borderStyle: 'solid' });
+                                    if (onUpdateElement) onUpdateElement({ borderWidth: val, borderStyle: 'solid' });
+                                } else {
+                                    handleStyleChange('borderWidth', val);
+                                }
+                            }}
                             originalValue={originalStyles.borderWidth}
                             onReset={() => handleReset('borderWidth')}
                             min={0} max={20}

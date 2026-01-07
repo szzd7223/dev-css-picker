@@ -5,6 +5,7 @@ let isPicking = false;
 let overlayContainer = null;
 let shadowRoot = null;
 let highlightBox = null;
+let cellHighlightBox = null;
 let lastElement = null;
 
 // Utility for picking elements
@@ -58,9 +59,63 @@ function getShallowHierarchy(el) {
 }
 
 // Element Info extraction
+// Helper to get Asset Info (Image/SVG/Background)
+function getAssetInfo(el) {
+    const url = getImageUrl(el);
+    const style = window.getComputedStyle(el);
+    const tagName = el.tagName.toLowerCase();
+
+    // 1. Image or Background Image
+    if (url) {
+        return {
+            url,
+            intrinsicSize: tagName === 'img' ? { width: el.naturalWidth, height: el.naturalHeight } : null,
+            renderedSize: { width: Math.round(el.getBoundingClientRect().width), height: Math.round(el.getBoundingClientRect().height) },
+            type: tagName === 'img' ? 'Image' : 'Background',
+            styles: {
+                objectFit: style.objectFit,
+                objectPosition: style.objectPosition,
+                borderRadius: style.borderRadius,
+                opacity: style.opacity,
+                backgroundSize: style.backgroundSize,
+                backgroundPosition: style.backgroundPosition,
+                backgroundRepeat: style.backgroundRepeat,
+                overflow: style.overflow,
+                zIndex: style.zIndex,
+                position: style.position
+            }
+        };
+    }
+
+    // 2. Inline SVG
+    if (tagName === 'svg') {
+        return {
+            url: null,
+            type: 'SVG',
+            renderedSize: { width: Math.round(el.getBoundingClientRect().width), height: Math.round(el.getBoundingClientRect().height) },
+            styles: {
+                opacity: style.opacity,
+                zIndex: style.zIndex,
+                overflow: style.overflow,
+                position: style.position
+            },
+            svgInfo: {
+                viewBox: el.getAttribute('viewBox'),
+                fill: style.fill,
+                stroke: style.stroke
+            }
+        };
+    }
+
+    return null;
+}
+
+// Element Info extraction
 function getElementInfo(el) {
     const rect = el.getBoundingClientRect();
     const style = window.getComputedStyle(el);
+    const assetInfo = getAssetInfo(el);
+
     return {
         cpId: getOrAssignId(el),
         tagName: el.tagName.toLowerCase(),
@@ -70,6 +125,7 @@ function getElementInfo(el) {
         height: Math.round(rect.height),
         top: rect.top,
         left: rect.left,
+        imageInfo: assetInfo,
         colors: {
             text: normalizeColor(style.color),
             background: normalizeColor(style.backgroundColor),
@@ -102,6 +158,7 @@ function getElementInfo(el) {
                 bottomLeft: style.borderBottomLeftRadius
             },
             borderWidth: style.borderTopWidth,
+            borderStyle: style.borderTopStyle,
             display: style.display
         },
         positioning: {
@@ -124,11 +181,28 @@ function getElementInfo(el) {
             columnGap: style.columnGap,
             gridTemplateColumns: style.gridTemplateColumns,
             gridTemplateRows: style.gridTemplateRows,
-            gridAutoFlow: style.gridAutoFlow
+            gridAutoFlow: style.gridAutoFlow,
+            gridItems: style.display === 'grid' || style.display === 'inline-grid' ? Array.from(el.children).map(child => {
+                const s = window.getComputedStyle(child);
+                return {
+                    gridColumn: s.gridColumn,
+                    gridRow: s.gridRow,
+                    gridArea: s.gridArea
+                };
+            }) : []
         },
         inlineStyle: {
             width: el.style.width,
-            height: el.style.height
+            height: el.style.height,
+            paddingTop: el.style.paddingTop,
+            paddingRight: el.style.paddingRight,
+            paddingBottom: el.style.paddingBottom,
+            paddingLeft: el.style.paddingLeft,
+            marginTop: el.style.marginTop,
+            marginRight: el.style.marginRight,
+            marginBottom: el.style.marginBottom,
+            marginLeft: el.style.marginLeft,
+            gap: el.style.gap
         },
         hierarchy: getShallowHierarchy(el)
     };
@@ -184,6 +258,16 @@ function createOverlay() {
             color: rgba(255, 255, 255, 0.8);
             font-weight: 400;
         }
+        .cell-highlight {
+            position: fixed;
+            border: 2px solid #22c55e;
+            background: rgba(34, 197, 94, 0.2);
+            pointer-events: none;
+            z-index: 10001;
+            box-sizing: border-box;
+            border-radius: 2px;
+            display: none;
+        }
     `;
     shadowRoot.appendChild(style);
 
@@ -191,6 +275,10 @@ function createOverlay() {
     highlightBox.className = 'highlight-box';
     highlightBox.innerHTML = '<div class="highlight-tag"></div>';
     shadowRoot.appendChild(highlightBox);
+
+    cellHighlightBox = document.createElement('div');
+    cellHighlightBox.className = 'cell-highlight';
+    shadowRoot.appendChild(cellHighlightBox);
 }
 
 function removeOverlay() {
@@ -199,6 +287,7 @@ function removeOverlay() {
         overlayContainer = null;
         shadowRoot = null;
         highlightBox = null;
+        cellHighlightBox = null;
     }
 }
 
@@ -238,6 +327,55 @@ function updateHighlight(el) {
         highlightBox.querySelector('.highlight-tag').style.bottom = '100%';
         highlightBox.querySelector('.highlight-tag').style.borderRadius = '4px 4px 0 0';
         highlightBox.querySelector('.highlight-tag').style.marginTop = '0';
+    }
+}
+
+function updateCellHighlight(el, info) {
+    if (!cellHighlightBox) return;
+
+    if (!info) {
+        cellHighlightBox.style.display = 'none';
+        return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
+
+    if (info.type === 'item') {
+        const children = Array.from(el.children);
+        const child = children[info.index];
+        if (child) {
+            const crect = child.getBoundingClientRect();
+            cellHighlightBox.style.display = 'block';
+            cellHighlightBox.style.width = `${crect.width}px`;
+            cellHighlightBox.style.height = `${crect.height}px`;
+            cellHighlightBox.style.top = `${crect.top}px`;
+            cellHighlightBox.style.left = `${crect.left}px`;
+        }
+    } else if (info.type === 'cell') {
+        // Advanced cell coordinate calculation
+        const colTracks = style.gridTemplateColumns.split(' ').map(s => parseFloat(s));
+        const rowTracks = style.gridTemplateRows.split(' ').map(s => parseFloat(s));
+        const colGap = parseFloat(style.columnGap || style.gap) || 0;
+        const rowGap = parseFloat(style.rowGap || style.gap) || 0;
+        const paddingLeft = parseFloat(style.paddingLeft);
+        const paddingTop = parseFloat(style.paddingTop);
+
+        let x = rect.left + paddingLeft;
+        for (let i = 0; i < info.col - 1; i++) {
+            x += (colTracks[i] || 0) + colGap;
+        }
+
+        let y = rect.top + paddingTop;
+        for (let i = 0; i < info.row - 1; i++) {
+            y += (rowTracks[i] || 0) + rowGap;
+        }
+
+        cellHighlightBox.style.display = 'block';
+        cellHighlightBox.style.width = `${colTracks[info.col - 1]}px`;
+        cellHighlightBox.style.height = `${rowTracks[info.row - 1]}px`;
+        cellHighlightBox.style.top = `${y}px`;
+        cellHighlightBox.style.left = `${x}px`;
     }
 }
 
@@ -306,75 +444,21 @@ async function extractAssetsData() {
     const elements = document.querySelectorAll('*');
 
     elements.forEach(el => {
-        // 1. Check for Images & Backgrounds
-        const url = getImageUrl(el);
-        if (url && !url.startsWith('data:')) {
+        const info = getAssetInfo(el);
+        if (info) {
             const rect = el.getBoundingClientRect();
             if (rect.width >= 10 && rect.height >= 10) {
-                const style = window.getComputedStyle(el);
-                const isBg = el.tagName !== 'IMG';
                 assets.push({
                     cpId: getOrAssignId(el),
-                    url: url,
-                    tagName: el.tagName.toLowerCase(),
-                    type: isBg ? 'Background' : 'Image',
-                    renderedSize: {
-                        width: Math.round(rect.width),
-                        height: Math.round(rect.height)
-                    },
-                    intrinsicSize: el.tagName === 'IMG' ? {
-                        width: el.naturalWidth,
-                        height: el.naturalHeight
-                    } : null,
-                    styles: {
-                        objectFit: style.objectFit,
-                        objectPosition: style.objectPosition,
-                        borderRadius: style.borderRadius,
-                        opacity: style.opacity,
-                        overflow: style.overflow,
-                        backgroundSize: style.backgroundSize,
-                        backgroundPosition: style.backgroundPosition,
-                        backgroundRepeat: style.backgroundRepeat,
-                        zIndex: style.zIndex // Phase 2 requirement
-                    }
-                });
-            }
-        }
-
-        // 2. Check for Inline SVGs
-        if (el.tagName === 'svg') {
-            const rect = el.getBoundingClientRect();
-            if (rect.width >= 10 && rect.height >= 10) {
-                const style = window.getComputedStyle(el);
-                assets.push({
-                    cpId: getOrAssignId(el),
-                    url: null, // Inline SVGs don't represent as a URL easily for this list, but we track them
-                    tagName: 'svg',
-                    type: 'SVG',
-                    renderedSize: {
-                        width: Math.round(rect.width),
-                        height: Math.round(rect.height)
-                    },
-                    styles: {
-                        opacity: style.opacity,
-                        zIndex: style.zIndex,
-                        pointerEvents: style.pointerEvents
-                    },
-                    svgInfo: {
-                        viewBox: el.getAttribute('viewBox'),
-                        fill: style.fill,
-                        stroke: style.stroke
-                    }
+                    ...info
                 });
             }
         }
     });
 
-    // De-duplicate by URL for images ( SVGs are unique by ID usually, so we keep them all or dedup by content hash? 
-    // For now, simpler to just list them all as "Page SVGs" since selection is by DOM node anyway).
     const seenUrls = new Set();
     return assets.filter(asset => {
-        if (asset.type === 'SVG') return true; // Keep all SVGs
+        if (asset.type === 'SVG') return true;
         if (seenUrls.has(asset.url)) return false;
         seenUrls.add(asset.url);
         return true;
@@ -422,26 +506,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const el = document.querySelector(`[data-cp-id="${cpId}"]`);
         if (el) {
             Object.entries(styles).forEach(([p, v]) => {
+                if (v === null || v === undefined) return;
                 if (typeof v === 'object' && v !== null && (p === 'padding' || p === 'margin' || p === 'borderRadius')) {
                     if (p === 'borderRadius') {
-                        el.style.borderTopLeftRadius = v.topLeft;
-                        el.style.borderTopRightRadius = v.topRight;
-                        el.style.borderBottomRightRadius = v.bottomRight;
-                        el.style.borderBottomLeftRadius = v.bottomLeft;
+                        el.style.setProperty('border-top-left-radius', v.topLeft, 'important');
+                        el.style.setProperty('border-top-right-radius', v.topRight, 'important');
+                        el.style.setProperty('border-bottom-right-radius', v.bottomRight, 'important');
+                        el.style.setProperty('border-bottom-left-radius', v.bottomLeft, 'important');
                     } else {
-                        el.style[`${p}Top`] = v.top;
-                        el.style[`${p}Right`] = v.right;
-                        el.style[`${p}Bottom`] = v.bottom;
-                        el.style[`${p}Left`] = v.left;
+                        el.style.setProperty(`${p}-top`, v.top, 'important');
+                        el.style.setProperty(`${p}-right`, v.right, 'important');
+                        el.style.setProperty(`${p}-bottom`, v.bottom, 'important');
+                        el.style.setProperty(`${p}-left`, v.left, 'important');
                     }
                 } else {
-                    el.style[p] = v;
+                    const camelToKebab = p.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                    el.style.setProperty(camelToKebab, v, 'important');
                 }
             });
             // Snap highlight to the element being manipulated
             lastElement = el;
             createOverlay();
             updateHighlight(el);
+            sendResponse(getElementInfo(el));
         }
     } else if (request.type === 'HIGHLIGHT_NODE') {
         const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
@@ -454,29 +541,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.type === 'SELECT_NODE') {
         const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
         if (el) {
-            const info = getElementInfo(el);
-            // Add image specific info if it's an image or has background
-            const url = getImageUrl(el);
-            if (url) {
-                const style = window.getComputedStyle(el);
-                info.imageInfo = {
-                    url,
-                    intrinsicSize: el.tagName === 'IMG' ? { width: el.naturalWidth, height: el.naturalHeight } : null,
-                    renderedSize: { width: Math.round(el.getBoundingClientRect().width), height: Math.round(el.getBoundingClientRect().height) },
-                    type: el.tagName === 'IMG' ? 'Image' : 'Background',
-                    styles: {
-                        objectFit: style.objectFit,
-                        objectPosition: style.objectPosition,
-                        borderRadius: style.borderRadius,
-                        opacity: style.opacity,
-                        backgroundSize: style.backgroundSize,
-                        backgroundPosition: style.backgroundPosition,
-                        backgroundRepeat: style.backgroundRepeat
-                    }
-                };
-            }
             lastElement = el;
-            sendResponse(info);
+            sendResponse(getElementInfo(el));
         }
+    } else if (request.type === 'HIGHLIGHT_GRID_AREA') {
+        const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
+        if (el) {
+            createOverlay();
+            updateCellHighlight(el, request.payload);
+        }
+    } else if (request.type === 'CLEAR_GRID_AREA') {
+        if (cellHighlightBox) cellHighlightBox.style.display = 'none';
     }
 });

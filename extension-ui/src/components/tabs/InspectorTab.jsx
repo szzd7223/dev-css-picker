@@ -311,6 +311,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
                             originalValue={originalStyles.fontSize}
                             onReset={() => handleReset('fontSize')}
                             min={8} max={72}
+                            hideUnitSelector={true}
                         />
                         <SelectInput
                             label="Font Weight"

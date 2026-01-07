@@ -46,7 +46,7 @@ export const ColorInput = ({ label, value, onChange, originalValue, onReset }) =
     );
 };
 
-const UNITS = ['px', '%', 'rem', 'em', 'vw', 'vh'];
+const UNITS = ['px', '%', 'rem', 'vw', 'vh'];
 
 const parseValue = (val) => {
     if (!val || val === 'auto') return { num: 0, unit: 'px', isAuto: true };
@@ -60,16 +60,57 @@ const parseValue = (val) => {
     };
 };
 
-export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allowAuto = false, originalValue, onReset, placeholderValue }) => {
+export const convertToPx = (value, fallbackPx = 0) => {
     const { num, unit, isAuto } = parseValue(value);
+    if (isAuto) return fallbackPx;
+
+    switch (unit) {
+        case 'rem': return num * 16;
+        case 'vw': return (num * window.innerWidth) / 100;
+        case 'vh': return (num * window.innerHeight) / 100;
+        case '%': return (num * fallbackPx) / 100;
+        case 'px':
+        default: return num;
+    }
+};
+
+export const convertFromPx = (pxValue, targetUnit, referencePx = 1) => {
+    switch (targetUnit) {
+        case 'rem': return pxValue / 16;
+        case 'vw': return (pxValue * 100) / window.innerWidth;
+        case 'vh': return (pxValue * 100) / window.innerHeight;
+        case '%': return (pxValue * 100) / referencePx;
+        case 'px':
+        default: return pxValue;
+    }
+};
+
+export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allowAuto = false, originalValue, onReset, placeholderValue, hideUnitSelector = false, disabled = false, unitless = false, step, hideSlider = false, stacked = false }) => {
+    const { num, unit: parsedUnit, isAuto } = parseValue(value);
+    // If unitless, force empty string. Otherwise respect hideUnitSelector or parsed unit.
+    const unit = unitless ? '' : (hideUnitSelector ? 'px' : parsedUnit);
     const isChanged = originalValue !== undefined && value !== originalValue;
     const [showUnits, setShowUnits] = useState(false);
+    const isDisabled = disabled || isAuto;
 
     // Adjust max based on unit
     let currentMax = max;
-    if (unit === '%') currentMax = 100;
-    if (unit === 'rem' || unit === 'em') currentMax = 20;
-    if (unit === 'vw' || unit === 'vh') currentMax = 100;
+    let currentMin = min;
+    // Only adjust if we have a unit that needs it
+    if (!unitless) {
+        if (unit === '%') {
+            currentMax = 100;
+            currentMin = Math.max(-100, min);
+        }
+        if (unit === 'rem') {
+            currentMax = max / 16;
+            currentMin = min / 16;
+        }
+        if (unit === 'vw' || unit === 'vh') {
+            currentMax = 100;
+            currentMin = Math.max(-100, min);
+        }
+    }
 
     const handleChange = (newVal) => {
         onChange(`${newVal}${unit}`);
@@ -91,9 +132,9 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 
     return (
         <div className="mb-3 group relative">
-            <div className="flex justify-between items-center mb-1">
+            <div className={`flex ${stacked ? 'flex-col gap-1 items-start' : 'justify-between items-center'} mb-1`}>
                 <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-slate-400 uppercase">{label}</label>
+                    {label && <label className="text-xs font-medium text-slate-400 uppercase">{label}</label>}
                     {isChanged && (
                         <button
                             onClick={onReset}
@@ -104,11 +145,12 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                         </button>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 shrink-0 ${stacked ? 'w-full justify-between' : ''}`}>
                     {allowAuto && (
                         <button
                             onClick={toggleAuto}
-                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isAuto ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}
+                            className={`text-[9px] px-1 py-0.5 rounded border transition-colors uppercase font-bold tracking-wider ${isAuto ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'} ${stacked ? 'flex-1 text-center justify-center flex' : ''}`}
+                            title="Toggle Auto"
                         >
                             Auto
                         </button>
@@ -133,15 +175,19 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                             }}
                             className={`w-10 text-xs font-mono font-bold border-none p-0 text-right outline-none focus:ring-0 appearance-none bg-transparent ${isAuto ? 'text-slate-500' : 'text-slate-200'}`}
                         />
-                        {!isAuto && (
+                        {!isAuto && !unitless && (
                             <div className="relative">
-                                <button
-                                    onClick={() => setShowUnits(!showUnits)}
-                                    className="text-[10px] text-slate-500 hover:text-blue-400 font-medium flex items-center"
-                                >
-                                    {unit}
-                                </button>
-                                {showUnits && (
+                                {hideUnitSelector ? (
+                                    <span className="text-[10px] text-slate-600 font-medium px-1">px</span>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowUnits(!showUnits)}
+                                        className="text-[10px] text-slate-500 hover:text-blue-400 font-medium flex items-center"
+                                    >
+                                        {unit}
+                                    </button>
+                                )}
+                                {showUnits && !hideUnitSelector && (
                                     <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col min-w-[50px]">
                                         {UNITS.map(u => (
                                             <button
@@ -159,18 +205,22 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                     </div>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
-                <input
-                    type="range"
-                    min={min}
-                    max={currentMax}
-                    step={unit === 'rem' || unit === 'em' ? 0.1 : 1}
-                    value={num}
-                    disabled={isAuto}
-                    onChange={(e) => handleChange(e.target.value)}
-                    className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-blue-500 ${isAuto ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
-                />
-            </div>
+
+            {/* Slider */}
+            {!hideSlider && (
+                <div className="flex items-center gap-2">
+                    <input
+                        type="range"
+                        min={currentMin}
+                        max={currentMax}
+                        step={step || (unit === 'rem' ? 0.1 : 1)}
+                        value={num}
+                        disabled={isDisabled}
+                        onChange={(e) => handleChange(e.target.value)}
+                        className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-blue-500 ${isDisabled ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
+                    />
+                </div>
+            )}
             {/* Backdrop for unit dropdown */}
             {showUnits && (
                 <div className="fixed inset-0 z-40" onClick={() => setShowUnits(false)} />
@@ -180,7 +230,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 };
 
 // New Component for handling Padding/Margin (All sides or Separate)
-export const SpacingInput = ({ label, values, onChange, originalValues, onReset, min = 0, max = 100 }) => {
+export const SpacingInput = ({ label, values, onChange, originalValues, onReset, min = 0, max = 100, allowAuto = false, placeholderValues }) => {
     // values is object { top, right, bottom, left } or string (if previously single)
     const getObj = (val) => {
         if (typeof val === 'string') return { top: val, right: val, bottom: val, left: val };
@@ -189,6 +239,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
 
     const current = getObj(values);
     const original = getObj(originalValues);
+    const placeholders = getObj(placeholderValues);
 
     // Normalize for comparison to avoid '10px' vs '10px ' issues
     const norm = (v) => String(v).trim();
@@ -199,6 +250,13 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
         norm(current.top) !== norm(current.right) ||
         norm(current.top) !== norm(current.bottom) ||
         norm(current.top) !== norm(current.left);
+
+    // Global Reset Logic
+    const isChanged =
+        norm(current.top) !== norm(original.top) ||
+        norm(current.right) !== norm(original.right) ||
+        norm(current.bottom) !== norm(original.bottom) ||
+        norm(current.left) !== norm(original.left);
 
     // User can opt-in to see expanded view even if sides are the same
     const [userWantsExpanded, setUserWantsExpanded] = useState(false);
@@ -222,6 +280,17 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                 </label>
 
                 <div className="flex items-center gap-1">
+                    {/* Global Reset */}
+                    {isChanged && (
+                        <button
+                            onClick={onReset}
+                            className="flex items-center justify-center p-1 rounded hover:bg-slate-700 text-slate-500 hover:text-blue-400 transition-colors mr-1"
+                            title="Reset all sides"
+                        >
+                            <RotateCcw size={10} />
+                        </button>
+                    )}
+
                     {areSidesDifferent && (
                         <button
                             onClick={() => handleAllChange(current.top)}
@@ -264,6 +333,9 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                         originalValue={original.top}
                         onReset={() => handleSideChange('top', original.top)}
                         min={min} max={max}
+                        allowAuto={allowAuto}
+                        placeholderValue={placeholders.top}
+                        stacked={true}
                     />
                     <SliderInput
                         label="Right"
@@ -272,6 +344,9 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                         originalValue={original.right}
                         onReset={() => handleSideChange('right', original.right)}
                         min={min} max={max}
+                        allowAuto={allowAuto}
+                        placeholderValue={placeholders.right}
+                        stacked={true}
                     />
                     <SliderInput
                         label="Bottom"
@@ -280,6 +355,9 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                         originalValue={original.bottom}
                         onReset={() => handleSideChange('bottom', original.bottom)}
                         min={min} max={max}
+                        allowAuto={allowAuto}
+                        placeholderValue={placeholders.bottom}
+                        stacked={true}
                     />
                     <SliderInput
                         label="Left"
@@ -288,6 +366,9 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                         originalValue={original.left}
                         onReset={() => handleSideChange('left', original.left)}
                         min={min} max={max}
+                        allowAuto={allowAuto}
+                        placeholderValue={placeholders.left}
+                        stacked={true}
                     />
                 </div>
             ) : (
@@ -298,6 +379,8 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                     originalValue={original.top}
                     onReset={() => onChange(original)}
                     min={min} max={max}
+                    allowAuto={allowAuto}
+                    placeholderValue={placeholders.top}
                 />
             )}
         </div>
