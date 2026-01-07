@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout, Equal } from 'lucide-react';
 import { SliderInput, SelectInput, SpacingInput, RadiusInput, convertToPx, convertFromPx } from '../ui/StyleControls';
 import GridMap from '../ui/GridMap';
@@ -8,6 +8,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
     const [computedGrid, setComputedGrid] = useState(null);
+    const previousCpId = useRef(null);
 
     // Sync state with selected element
     useEffect(() => {
@@ -65,16 +66,25 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 }
             };
 
-            setOriginalStyles(initialState);
+            // Only update original styles when we select a NEW element
+            if (previousCpId.current !== selectedElement.cpId) {
+                setOriginalStyles(initialState);
+                previousCpId.current = selectedElement.cpId;
+            }
+
+            // Always update local styles to reflect current state (externally or echo)
             setLocalStyles(initialState);
-            // Initialize computed grid from initial data
-            setComputedGrid({
-                columns: selectedElement.flexGrid?.gridTemplateColumns,
-                rows: selectedElement.flexGrid?.gridTemplateRows,
-                items: selectedElement.flexGrid?.gridItems
-            });
+
+            // Initialize computed grid if needed (or keep sync)
+            if (previousCpId.current !== selectedElement.cpId || !computedGrid) {
+                setComputedGrid({
+                    columns: selectedElement.flexGrid?.gridTemplateColumns,
+                    rows: selectedElement.flexGrid?.gridTemplateRows,
+                    items: selectedElement.flexGrid?.gridItems
+                });
+            }
         }
-    }, [selectedElement]);
+    }, [selectedElement, computedGrid]);
 
     const sendLiveUpdate = (updatedStyles, callback) => {
         if (!selectedElement) return;
