@@ -10,7 +10,6 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
 
     useEffect(() => {
         if (selectedElement) {
-            // I will fix this
             const initialState = {
                 color: selectedElement.colors.text,
                 backgroundColor: selectedElement.colors.background,
