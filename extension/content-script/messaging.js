@@ -1,0 +1,98 @@
+if (!window.CSSPicker) window.CSSPicker = {};
+
+/**
+ * Sets up the main message listener for the content script
+ * @param {ElementChangeTracker} tracker - The tracker instance
+ * @param {object} handlers - specific handlers for other actions { onStartPicking, onStopPicking, onScanPage, onScanAssets, onSelectNode, onHighlightNode }
+ */
+window.CSSPicker.setupMessageListeners = function (tracker, handlers) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        // 1. SCANNING (Overview / Assets)
+        if (request.type === 'SCAN_PAGE') {
+            if (handlers.onScanPage) handlers.onScanPage().then(sendResponse);
+            return true; // async response
+        }
+
+        if (request.type === 'SCAN_ASSETS') {
+            if (handlers.onScanAssets) handlers.onScanAssets().then(sendResponse);
+            return true;
+        }
+
+        // 2. PICKING MODES
+        if (request.type === 'START_PICKING') {
+            if (handlers.onStartPicking) handlers.onStartPicking();
+        } else if (request.type === 'STOP_PICKING') {
+            if (handlers.onStopPicking) handlers.onStopPicking();
+        }
+
+        // 3. SELECTION / HIGHLIGHTING
+        else if (request.type === 'SELECT_NODE') {
+            if (handlers.onSelectNode) handlers.onSelectNode(request.payload.cpId, sendResponse);
+            return true;
+        }
+        else if (request.type === 'HIGHLIGHT_NODE') {
+            if (handlers.onHighlightNode) handlers.onHighlightNode(request.payload.cpId, request.payload.noScroll);
+        }
+
+        // 4. STYLE UPDATES (The Core Fix)
+        else if (request.type === 'UPDATE_STYLE') {
+            const { cpId, styles } = request.payload;
+            const el = document.querySelector(`[data-cp-id="${cpId}"]`);
+
+            if (el) {
+                // Apply changes via tracker
+                Object.entries(styles).forEach(([prop, val]) => {
+                    // Special case for box model shorthands if passed as object
+                    // The store passes 'padding' as object? No, the store passes what it gets.
+                    // But standard CSS properties are strings.
+                    // If the store sends 'padding' as an object (e.g. {top: '10px'...}), we must decompose it here
+                    // OR the store decomposes it.
+                    // Looking at `devtools.js` store implementation:
+                    // updateProperty receives (property, value).
+                    // If property is 'padding', value is likely { top: ... }.
+                    // Wait, `updateProperty` sends `{[property]: value}`.
+                    // So if I update 'padding', I send `{ padding: { top: '10px', ...} }` ?
+                    // NO, standard CSS properties like `padding` are shorthands.
+                    // The UI inputs usually update specific sides (paddingTop).
+                    // The `onUpdateElement` in `App.jsx` handled decomposition.
+                    // My `tracker.js` expects (element, property, value).
+                    // If I pass `padding`, I need to know if it's a shorthand string or object.
+
+                    // Let's handle the Decomposition HERE to be safe, matching legacy logic in content.js
+
+                    if (typeof val === 'object' && val !== null && (prop === 'padding' || prop === 'margin' || prop === 'borderRadius')) {
+                        if (prop === 'borderRadius') {
+                            if (val.topLeft) tracker.applyChange(el, 'border-top-left-radius', val.topLeft);
+                            if (val.topRight) tracker.applyChange(el, 'border-top-right-radius', val.topRight);
+                            if (val.bottomRight) tracker.applyChange(el, 'border-bottom-right-radius', val.bottomRight);
+                            if (val.bottomLeft) tracker.applyChange(el, 'border-bottom-left-radius', val.bottomLeft);
+                        } else {
+                            if (val.top) tracker.applyChange(el, `${prop}-top`, val.top);
+                            if (val.right) tracker.applyChange(el, `${prop}-right`, val.right);
+                            if (val.bottom) tracker.applyChange(el, `${prop}-bottom`, val.bottom);
+                            if (val.left) tracker.applyChange(el, `${prop}-left`, val.left);
+                        }
+                    } else {
+                        // Standard property
+                        // Convert camelCase to kebab-case just in case
+                        const kebabProp = prop.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                        tracker.applyChange(el, kebabProp, val);
+                    }
+                });
+
+                // Trigger Highlight Update via callback (since messaging doesn't own highlighting logic)
+                if (handlers.onUpdateHighlight) handlers.onUpdateHighlight(el);
+
+                // Return new computed info
+                if (handlers.getComputedInfo) sendResponse(handlers.getComputedInfo(el));
+            }
+        }
+
+        // 5. GRID HIGHLIGHTING (Legacy)
+        else if (request.type === 'HIGHLIGHT_GRID_AREA') {
+            if (handlers.onHighlightGridArea) handlers.onHighlightGridArea(request.payload);
+        } else if (request.type === 'CLEAR_GRID_AREA') {
+            if (handlers.onClearGridArea) handlers.onClearGridArea();
+        }
+    });
+}

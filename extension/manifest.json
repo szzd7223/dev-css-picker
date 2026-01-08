@@ -27,6 +27,8 @@
                 "<all_urls>"
             ],
             "js": [
+                "content-script/tracker.js",
+                "content-script/messaging.js",
                 "content.js"
             ]
         }

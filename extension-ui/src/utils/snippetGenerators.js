@@ -1,6 +1,7 @@
+import { cleanStyleValue } from './styleUtils';
 
-// Map of common CSS values to Tailwind classes
-// This is a "best effort" mapping for the live editor
+// Re-using the scales from styleUtils or defining them here if we want to fully decouple.
+// For now, let's keep them self-contained here to ensure this module is standalone for the store.
 
 const SPACING_SCALE = {
     '0': '0px', 'px': '1px', '0.5': '0.125rem', '1': '0.25rem', '1.5': '0.375rem', '2': '0.5rem',
@@ -73,6 +74,7 @@ export function generateTailwindClasses(styles) {
 
     if (styles.display === 'grid') {
         if (fg.gridTemplateColumns && fg.gridTemplateColumns !== 'none') {
+            // Simplified detection logic
             const repeatMatch = fg.gridTemplateColumns.match(/repeat\((\d+),/);
             const parts = fg.gridTemplateColumns.trim().split(/\s+(?![^()]*\))/);
             const count = repeatMatch ? repeatMatch[1] : parts.length;
@@ -203,14 +205,67 @@ export function generateTailwindClasses(styles) {
     return classes.join(' ');
 }
 
-export function cleanStyleValue(val) {
-    if (!val) return undefined;
-    if (typeof val === 'object') {
-        const out = {};
-        for (const k in val) {
-            out[k] = cleanStyleValue(val[k]);
-        }
-        return out;
+export function generateCSS(styles, tagName = 'element') {
+    const cssLines = [];
+
+    // Core Layout
+    cssLines.push(`  display: ${styles.display || 'block'};`);
+    if (styles.width) cssLines.push(`  width: ${styles.width};`);
+    if (styles.height) cssLines.push(`  height: ${styles.height};`);
+    if (styles.color) cssLines.push(`  color: ${styles.color};`);
+
+    if (styles.backgroundColor && styles.backgroundColor !== 'transparent') {
+        cssLines.push(`  background-color: ${styles.backgroundColor};`);
     }
-    return val;
+
+    // Positioning
+    if (styles.position && styles.position !== 'static') {
+        cssLines.push(`  position: ${styles.position};`);
+        if (styles.top) cssLines.push(`  top: ${styles.top};`);
+        if (styles.right) cssLines.push(`  right: ${styles.right};`);
+        if (styles.bottom) cssLines.push(`  bottom: ${styles.bottom};`);
+        if (styles.left) cssLines.push(`  left: ${styles.left};`);
+        if (styles.zIndex) cssLines.push(`  z-index: ${styles.zIndex};`);
+    }
+
+    // Box Model (Padding/Margin)
+    const formatSpacing = (val) => {
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') {
+            if (val.top === val.bottom && val.left === val.right) {
+                return val.top === val.left ? val.top : `${val.top} ${val.left}`;
+            }
+            return `${val.top} ${val.right} ${val.bottom} ${val.left}`;
+        }
+        return undefined;
+    };
+
+    if (styles.padding) {
+        const p = formatSpacing(styles.padding);
+        if (p) cssLines.push(`  padding: ${p};`);
+    }
+    if (styles.margin) {
+        const m = formatSpacing(styles.margin);
+        if (m) cssLines.push(`  margin: ${m};`);
+    }
+
+    // Typography
+    if (styles.fontSize) cssLines.push(`  font-size: ${styles.fontSize};`);
+    if (styles.fontWeight) cssLines.push(`  font-weight: ${styles.fontWeight};`);
+
+    // Flex/Grid
+    if (styles.display === 'flex') {
+        const fg = styles.flexGrid || {};
+        if (fg.flexDirection) cssLines.push(`  flex-direction: ${fg.flexDirection};`);
+        if (fg.justifyContent) cssLines.push(`  justify-content: ${fg.justifyContent};`);
+        if (fg.alignItems) cssLines.push(`  align-items: ${fg.alignItems};`);
+        if (fg.gap) cssLines.push(`  gap: ${fg.gap};`);
+    } else if (styles.display === 'grid') {
+        const fg = styles.flexGrid || {};
+        if (fg.gridTemplateColumns) cssLines.push(`  grid-template-columns: ${fg.gridTemplateColumns};`);
+        if (fg.gridAutoFlow && fg.gridAutoFlow !== 'row') cssLines.push(`  grid-auto-flow: ${fg.gridAutoFlow};`);
+        if (fg.gap) cssLines.push(`  gap: ${fg.gap};`);
+    }
+
+    return `${tagName} {\n${cssLines.join('\n')}\n}`;
 }

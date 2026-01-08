@@ -2,193 +2,62 @@ import React, { useState, useEffect } from 'react';
 import { Type, Check, Copy, ArrowLeft, RefreshCw, Box } from 'lucide-react';
 import { SliderInput, SelectInput } from '../ui/StyleControls';
 import DomTree from './DomTree';
-import { generateTailwindClasses, cleanStyleValue } from '../../utils/styleUtils';
+import { generateTailwindClasses, generateCSS } from '../../utils/snippetGenerators';
 import { isRestrictedUrl } from '../../utils/browserUtils';
+import { useDevToolsStore } from '../../store/devtools';
+import { cleanStyleValue } from '../../utils/styleUtils';
 
-export default function InspectorTab({ selectedElement, onSelectElement, onUpdateElement, onTabChange }) {
-    const [localStyles, setLocalStyles] = useState({});
-    const [originalStyles, setOriginalStyles] = useState({});
-    const [error, setError] = useState(null);
+export default function InspectorTab() {
+    const {
+        selectedElement,
+        setSelectedElement,
+        updateProperty,
+        setActiveTab
+    } = useDevToolsStore();
+
     const [codeTab, setCodeTab] = useState('tailwind');
-    const [generatedCode, setGeneratedCode] = useState('');
     const [isCopied, setIsCopied] = useState(false);
-    const [generatedCss, setGeneratedCss] = useState('');
+    const [pageError, setPageError] = useState(null);
 
-    // Sync state if selectedElement data changes (e.g. Refresh)
+    // Derived State for Snippets
+    const generatedCode = selectedElement ? generateTailwindClasses(selectedElement) : '';
+    const generatedCss = selectedElement ? generateCSS(selectedElement, selectedElement.tagName.toLowerCase()) : '';
+
+    // Helper for flattened style access (safe access for UI controls)
+    const getStyle = (path) => {
+        if (!selectedElement) return '';
+        // path e.g. 'colors.text' or 'typography.size'
+        // But our inputs expect direct values matching what updateProperty uses?
+        // Wait, the Store's updateProperty handles mapping FROM specific keys (like 'fontSize') TO the structure.
+        // But for READING, we need to read from the structure `selectedElement`.
+        // Let's create a safe reader or just map locally for the render.
+
+        switch (path) {
+            case 'fontSize': return selectedElement.typography?.size;
+            case 'fontWeight': return selectedElement.typography?.weight;
+            // Add others as needed if we add more controls back
+            default: return '';
+        }
+    };
+
+    // --- SETUP EFFECT ---
     useEffect(() => {
-        if (selectedElement) {
-            const cleanPx = (val) => {
-                if (typeof val === 'object' && val !== null) {
-                    const out = {};
-                    for (const k in val) out[k] = cleanPx(val[k]);
-                    return out;
-                }
-                if (!val || val === 'none' || val === 'auto') return val;
-                const parsed = parseFloat(val);
-                if (isNaN(parsed) || !isFinite(parsed)) return '0px';
-                if (parsed > 10000) return '0px';
-                return `${Math.round(parsed)}px`;
-            };
-
-
-            // Special helper for radius to clamp "pill hacks" (e.g. 9999px) to the actual visual limit
-            const effectiveMaxRadius = Math.max(0, Math.round(Math.min(selectedElement.width, selectedElement.height) / 2));
-
-            const cleanRadius = (val) => {
-                if (typeof val === 'object' && val !== null) {
-                    const out = {};
-                    for (const k in val) out[k] = cleanRadius(val[k]);
-                    return out;
-                }
-
-                // If it's a pixel value, check if it exceeds the effective max
-                if (String(val).endsWith('px')) {
-                    const parsed = parseFloat(val);
-                    if (!isNaN(parsed) && isFinite(parsed)) {
-                        // If it's effectively a pill (larger than half size), clamp it to half size
-                        // This allows the slider to be useful immediately (sliding down from max)
-                        if (effectiveMaxRadius > 0 && parsed > effectiveMaxRadius) {
-                            return `${effectiveMaxRadius}px`;
-                        }
-                        return `${Math.round(parsed)}px`;
-                    }
-                }
-                return cleanStyleValue(val);
-            };
-
-            const initialState = {
-                display: selectedElement.boxModel.display,
-                color: selectedElement.colors.text,
-                backgroundColor: selectedElement.colors.background,
-                backgroundImage: selectedElement.colors.backgroundImage || 'none',
-                fontSize: selectedElement.typography.size,
-                fontWeight: selectedElement.typography.weight,
-                width: selectedElement.inlineStyle?.width || (selectedElement.width + 'px'),
-                height: selectedElement.inlineStyle?.height || (selectedElement.height + 'px'),
-                position: selectedElement.positioning?.position || 'static',
-                top: cleanStyleValue(selectedElement.positioning?.top),
-                right: cleanStyleValue(selectedElement.positioning?.right),
-                bottom: cleanStyleValue(selectedElement.positioning?.bottom),
-                left: cleanStyleValue(selectedElement.positioning?.left),
-                zIndex: selectedElement.positioning?.zIndex,
-                padding: cleanStyleValue(selectedElement.boxModel.padding),
-                margin: cleanStyleValue(selectedElement.boxModel.margin),
-                borderRadius: cleanRadius(selectedElement.boxModel.borderRadius),
-                borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
-                borderColor: selectedElement.colors.border || 'transparent',
-                flexGrid: {
-                    flexDirection: selectedElement.flexGrid?.flexDirection,
-                    justifyContent: selectedElement.flexGrid?.justifyContent,
-                    alignItems: selectedElement.flexGrid?.alignItems,
-                    gap: cleanStyleValue(selectedElement.flexGrid?.gap),
-                    rowGap: cleanStyleValue(selectedElement.flexGrid?.rowGap),
-                    columnGap: cleanStyleValue(selectedElement.flexGrid?.columnGap),
-                    gridTemplateColumns: selectedElement.flexGrid?.gridTemplateColumns,
-                    gridTemplateRows: selectedElement.flexGrid?.gridTemplateRows,
-                    gridAutoFlow: selectedElement.flexGrid?.gridAutoFlow || 'row',
-                }
-            };
-
-            setOriginalStyles(initialState);
-            setLocalStyles(initialState);
-            // Debug check
-            console.log('Inspector Data', initialState);
-        }
-    }, [selectedElement]);
-
-    // 1. Logic for Code Generation (Runs whenever styles change)
-    useEffect(() => {
-        if (!selectedElement || Object.keys(localStyles).length === 0) return;
-
-        const code = generateTailwindClasses(localStyles);
-        setGeneratedCode(code);
-
-        // Generate a more complete CSS block
-        const cssLines = [];
-        cssLines.push(`  display: ${localStyles.display || 'block'};`);
-        if (localStyles.width) cssLines.push(`  width: ${localStyles.width};`);
-        if (localStyles.height) cssLines.push(`  height: ${localStyles.height};`);
-        cssLines.push(`  color: ${localStyles.color};`);
-        if (localStyles.backgroundColor && localStyles.backgroundColor !== 'transparent') {
-            cssLines.push(`  background-color: ${localStyles.backgroundColor};`);
-        }
-        if (localStyles.position && localStyles.position !== 'static') {
-            cssLines.push(`  position: ${localStyles.position};`);
-            if (localStyles.top) cssLines.push(`  top: ${localStyles.top};`);
-            if (localStyles.right) cssLines.push(`  right: ${localStyles.right};`);
-            if (localStyles.bottom) cssLines.push(`  bottom: ${localStyles.bottom};`);
-            if (localStyles.left) cssLines.push(`  left: ${localStyles.left};`);
-        }
-        cssLines.push(`  font-size: ${localStyles.fontSize};`);
-        cssLines.push(`  font-weight: ${localStyles.fontWeight};`);
-
-        // Add padding/margin if they exist
-        const formatSpacing = (val) => {
-            if (typeof val === 'string') return val;
-            if (typeof val === 'object') {
-                if (val.top === val.bottom && val.left === val.right) {
-                    return val.top === val.left ? val.top : `${val.top} ${val.left}`;
-                }
-                return `${val.top} ${val.right} ${val.bottom} ${val.left}`;
-            }
-            return '0px';
-        };
-
-        if (localStyles.padding) cssLines.push(`  padding: ${formatSpacing(localStyles.padding)};`);
-        if (localStyles.margin) cssLines.push(`  margin: ${formatSpacing(localStyles.margin)};`);
-
-        // Add Flex/Grid specific CSS
-        if (localStyles.display === 'flex') {
-            const fg = localStyles.flexGrid || {};
-            if (fg.flexDirection) cssLines.push(`  flex-direction: ${fg.flexDirection};`);
-            if (fg.justifyContent) cssLines.push(`  justify-content: ${fg.justifyContent};`);
-            if (fg.alignItems) cssLines.push(`  align-items: ${fg.alignItems};`);
-            if (fg.gap) cssLines.push(`  gap: ${fg.gap};`);
-        } else if (localStyles.display === 'grid') {
-            const fg = localStyles.flexGrid || {};
-            if (fg.gridTemplateColumns) cssLines.push(`  grid-template-columns: ${fg.gridTemplateColumns};`);
-            if (fg.gridAutoFlow && fg.gridAutoFlow !== 'row') cssLines.push(`  grid-auto-flow: ${fg.gridAutoFlow};`);
-            if (fg.gap) cssLines.push(`  gap: ${fg.gap};`);
-        }
-
-        const cssBlock = `${selectedElement.tagName.toLowerCase()} {\n${cssLines.join('\n')}\n}`;
-        setGeneratedCss(cssBlock);
-    }, [localStyles, selectedElement]);
-
-    // 2. Logic for Live Updates (Triggered only by user interaction)
-    const sendLiveUpdate = (updatedStyles) => {
-        if (!selectedElement) return;
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    type: 'UPDATE_STYLE',
-                    payload: {
-                        cpId: selectedElement.cpId,
-                        styles: updatedStyles
-                    }
-                }).catch(() => { });
+            const activeTab = tabs[0];
+            if (!activeTab?.id) {
+                setPageError("No active page found.");
+                return;
+            }
+
+            if (isRestrictedUrl(activeTab.url)) {
+                setPageError("RESTRICTED_PAGE");
+            } else {
+                setPageError(null);
             }
         });
-    };
-
+    }, []);
 
     // Handlers
-    const handleStyleChange = (property, value) => {
-        const nextStyles = { ...localStyles, [property]: value };
-        setLocalStyles(nextStyles);
-
-        // Send only the change to preserve other original styles on the page
-        sendLiveUpdate({ [property]: value });
-        if (onUpdateElement) onUpdateElement({ [property]: value });
-    };
-
-    const handleReset = (property) => {
-        if (originalStyles[property] !== undefined) {
-            handleStyleChange(property, originalStyles[property]);
-            if (onUpdateElement) onUpdateElement({ [property]: originalStyles[property] });
-        }
-    };
-
     const handleSelectNode = (cpId) => {
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
@@ -197,7 +66,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
                     payload: { cpId }
                 }, (response) => {
                     if (response && response.tagName) {
-                        onSelectElement(response);
+                        setSelectedElement(response);
                     }
                 });
                 chrome.tabs.sendMessage(tabs[0].id, { type: 'HIGHLIGHT_NODE', payload: { cpId } });
@@ -206,34 +75,20 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
     };
 
     const copyToClipboard = () => {
-        const generatedCss = `${selectedElement.tagName.toLowerCase()} {\n  color: ${localStyles.color};\n  background: ${localStyles.backgroundColor};\n  font-size: ${localStyles.fontSize};\n  width: ${localStyles.width};\n  height: ${localStyles.height};\n}`;
+        if (!selectedElement) return;
+
         const textToCopy = codeTab === 'tailwind'
             ? `<${selectedElement.tagName.toLowerCase()} class="${generatedCode}">`
             : generatedCss;
+
         navigator.clipboard.writeText(textToCopy);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
     };
 
-    // --- SETUP EFFECT ---
-    useEffect(() => {
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            const activeTab = tabs[0];
-            if (!activeTab?.id) {
-                setError("No active page found.");
-                return;
-            }
-
-            if (isRestrictedUrl(activeTab.url)) {
-                setError("RESTRICTED_PAGE");
-            } else {
-                setError(null);
-            }
-        });
-    }, []);
-
-    if (error) {
-        const isRestricted = error === "RESTRICTED_PAGE";
+    // Render Error State
+    if (pageError) {
+        const isRestricted = pageError === "RESTRICTED_PAGE";
         return (
             <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
                 <div className={`w-12 h-12 ${isRestricted ? 'bg-amber-500/10' : 'bg-red-500/10'} rounded-full flex items-center justify-center mb-4`}>
@@ -245,7 +100,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
                 <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
                     {isRestricted
                         ? "For security reasons, CSS Picker cannot be used on internal browser pages or the Web Store."
-                        : error
+                        : pageError
                     }
                 </p>
                 {!isRestricted && (
@@ -274,7 +129,7 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => onTabChange('overview')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+                    <button onClick={() => setActiveTab('overview')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
                         <ArrowLeft size={18} />
                     </button>
                     <h1 className="text-xl font-bold text-white">Inspect Element</h1>
@@ -306,19 +161,15 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
                     <div className="p-4 space-y-4">
                         <SliderInput
                             label="Font Size"
-                            value={localStyles.fontSize}
-                            onChange={(val) => handleStyleChange('fontSize', val)}
-                            originalValue={originalStyles.fontSize}
-                            onReset={() => handleReset('fontSize')}
+                            value={getStyle('fontSize')}
+                            onChange={(val) => updateProperty('fontSize', val)}
                             min={8} max={72}
                             hideUnitSelector={true}
                         />
                         <SelectInput
                             label="Font Weight"
-                            value={localStyles.fontWeight}
-                            onChange={(val) => handleStyleChange('fontWeight', val)}
-                            originalValue={originalStyles.fontWeight}
-                            onReset={() => handleReset('fontWeight')}
+                            value={getStyle('fontWeight')}
+                            onChange={(val) => updateProperty('fontWeight', val)}
                             options={[
                                 { value: '100', label: 'Thin (100)' },
                                 { value: '300', label: 'Light (300)' },
@@ -331,10 +182,6 @@ export default function InspectorTab({ selectedElement, onSelectElement, onUpdat
                         />
                     </div>
                 </div>
-
-                {/* COLORS (Moved to ColorsTab) - Removed */}
-                {/* POSITIONING (Moved to LayoutTab) - Removed */}
-                {/* LAYOUT (Moved to LayoutTab) - Removed */}
             </div>
 
             {/* GENERATED CODE */}
