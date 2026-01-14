@@ -204,7 +204,8 @@ function getElementInfo(el) {
             marginLeft: el.style.marginLeft,
             gap: el.style.gap
         },
-        hierarchy: getShallowHierarchy(el)
+        hierarchy: getShallowHierarchy(el),
+        originalStyles: tracker.getAllOriginals(el)
     };
 }
 

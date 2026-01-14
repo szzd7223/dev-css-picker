@@ -10,6 +10,13 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
 
     useEffect(() => {
         if (selectedElement) {
+            const getOriginal = (prop, currentVal) => {
+                if (selectedElement.originalStyles && selectedElement.originalStyles[prop] !== undefined) {
+                    return selectedElement.originalStyles[prop];
+                }
+                return currentVal;
+            };
+
             const initialState = {
                 color: selectedElement.colors.text,
                 backgroundColor: selectedElement.colors.background,
@@ -18,7 +25,17 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                 borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
                 borderStyle: selectedElement.boxModel.borderStyle || 'none',
             };
-            setOriginalStyles(initialState);
+
+            const originalState = {
+                color: getOriginal('color', initialState.color),
+                backgroundColor: getOriginal('background-color', initialState.backgroundColor),
+                backgroundImage: getOriginal('background-image', initialState.backgroundImage),
+                borderColor: getOriginal('border-color', initialState.borderColor),
+                borderWidth: getOriginal('border-width', initialState.borderWidth),
+                borderStyle: getOriginal('border-style', initialState.borderStyle),
+            };
+
+            setOriginalStyles(originalState);
             setLocalStyles(initialState);
         }
     }, [selectedElement]);

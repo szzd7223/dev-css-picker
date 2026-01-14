@@ -82,4 +82,12 @@ window.CSSPicker.ElementChangeTracker = class ElementChangeTracker {
         if (!element || !this.changes.has(element)) return null;
         return this.changes.get(element)[property];
     }
+
+    /**
+     * Get all original values for an element
+     */
+    getAllOriginals(element) {
+        if (!element || !this.changes.has(element)) return {};
+        return { ...this.changes.get(element) };
+    }
 }
