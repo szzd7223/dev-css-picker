@@ -62,15 +62,15 @@ window.CSSPicker.setupMessageListeners = function (tracker, handlers) {
 
                     if (typeof val === 'object' && val !== null && (prop === 'padding' || prop === 'margin' || prop === 'borderRadius')) {
                         if (prop === 'borderRadius') {
-                            if (val.topLeft) tracker.applyChange(el, 'border-top-left-radius', val.topLeft);
-                            if (val.topRight) tracker.applyChange(el, 'border-top-right-radius', val.topRight);
-                            if (val.bottomRight) tracker.applyChange(el, 'border-bottom-right-radius', val.bottomRight);
-                            if (val.bottomLeft) tracker.applyChange(el, 'border-bottom-left-radius', val.bottomLeft);
+                            if (val.topLeft !== undefined) tracker.applyChange(el, 'border-top-left-radius', val.topLeft);
+                            if (val.topRight !== undefined) tracker.applyChange(el, 'border-top-right-radius', val.topRight);
+                            if (val.bottomRight !== undefined) tracker.applyChange(el, 'border-bottom-right-radius', val.bottomRight);
+                            if (val.bottomLeft !== undefined) tracker.applyChange(el, 'border-bottom-left-radius', val.bottomLeft);
                         } else {
-                            if (val.top) tracker.applyChange(el, `${prop}-top`, val.top);
-                            if (val.right) tracker.applyChange(el, `${prop}-right`, val.right);
-                            if (val.bottom) tracker.applyChange(el, `${prop}-bottom`, val.bottom);
-                            if (val.left) tracker.applyChange(el, `${prop}-left`, val.left);
+                            if (val.top !== undefined) tracker.applyChange(el, `${prop}-top`, val.top);
+                            if (val.right !== undefined) tracker.applyChange(el, `${prop}-right`, val.right);
+                            if (val.bottom !== undefined) tracker.applyChange(el, `${prop}-bottom`, val.bottom);
+                            if (val.left !== undefined) tracker.applyChange(el, `${prop}-left`, val.left);
                         }
                     } else {
                         // Standard property

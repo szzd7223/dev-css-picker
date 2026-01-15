@@ -11,48 +11,55 @@ window.CSSPicker.ElementChangeTracker = class ElementChangeTracker {
      * @param {string} property 
      * @param {string} value 
      */
-    applyChange(element, property, value) {
+    /**
+     * Helper to convert camelCase to kebab-case
+     */
+    camelToKebab(string) {
+        return string.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase();
+    }
+
+    /**
+     * Track and apply a style change to an element
+     * Supports both (element, prop, value) and (element, stylesDict)
+     */
+    applyChange(element, propertyOrStyles, value) {
         if (!element) return false;
 
-        // 1. Initialize tracking for this element if needed
+        // Normalize input to dictionary
+        let styles = {};
+        if (typeof propertyOrStyles === 'object') {
+            styles = propertyOrStyles;
+        } else {
+            styles = { [propertyOrStyles]: value };
+        }
+
+        // 1. Initialize tracking
         if (!this.changes.has(element)) {
             this.changes.set(element, {});
         }
         const elementChanges = this.changes.get(element);
 
-        // 2. Save original value if not already saved
-        // We only save the VERY first value we encountered before ANY of our changes
-        // This allows correct "Reset" behavior even after multiple edits
-        // Note: We need to use computed style or inline style? 
-        // Ideally inline style is what we overwrite. If inline style was empty, we save empty.
-        // If we want to revert to *computed* style, that's trickier because removing inline style reveals computed.
-        // So saving the original INLINE style is usually correct for "undoing" local edits.
-        if (!(property in elementChanges)) {
-            elementChanges[property] = element.style.getPropertyValue(property); // Save inline style
-        }
+        for (const [rawProp, val] of Object.entries(styles)) {
+            const prop = this.camelToKebab(rawProp);
 
-        // 3. Apply the change
-        // We use !important to ensure it overrides existing classes
-        if (value === null || value === undefined || value === '') {
-            // If clearing, we might want to restore original or just remove property
-            // For now, let's remove property
-            element.style.removeProperty(property);
-        } else {
-            // Handle special cases
-            if (property === 'display' && value === 'grid') {
-                // Force cleanup if switching display types? 
+            // 2. Save original value if not already saved
+            // 2. Save original value if not already saved
+            if (!(prop in elementChanges)) {
+                elementChanges[prop] = element.style.getPropertyValue(prop);
             }
 
-            element.style.setProperty(property, value, 'important');
-        }
+            // 3. Apply the change
+            if (val === null || val === undefined || val === '') {
+                element.style.removeProperty(prop);
+            } else {
+                element.style.setProperty(prop, val, 'important');
 
-        // 4. Force Reflow for Layout Properties
-        // Grid/Flex changes sometimes don't visually update immediately in complex layouts
-        if (['gridTemplateColumns', 'gridTemplateRows', 'gap', 'display'].includes(property)) {
-            // Trigger reflow
-            void element.offsetHeight;
+                // 4. Force Reflow for Layout Properties
+                if (['grid-template-columns', 'grid-template-rows', 'gap', 'display'].includes(prop)) {
+                    void element.offsetHeight;
+                }
+            }
         }
-
         return true;
     }
 
