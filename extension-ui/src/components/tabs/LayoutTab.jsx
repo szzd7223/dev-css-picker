@@ -30,6 +30,37 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 return cleanStyleValue(val);
             };
 
+            const getOriginal = (prop, currentVal) => {
+                // Check if we have a tracked original value from the DOM tracker
+                if (selectedElement.originalStyles && selectedElement.originalStyles[prop] !== undefined) {
+                    return selectedElement.originalStyles[prop];
+                }
+                // If not tracked, the current value IS the original
+                return currentVal;
+            };
+
+            const getOriginalBoxModel = (prop, side, currentVal) => {
+                const trackedProp = side ? `${prop}-${side}` : prop;
+                // Tracker stores 'padding-top', 'margin-left' etc or 'border-top-left-radius'
+                // Our UI uses 'padding', 'margin', 'borderRadius' objects.
+                // We need to map UI keys to CSS properties.
+
+                let cssProp = '';
+                if (prop === 'borderRadius') {
+                    if (side === 'topLeft') cssProp = 'border-top-left-radius';
+                    if (side === 'topRight') cssProp = 'border-top-right-radius';
+                    if (side === 'bottomRight') cssProp = 'border-bottom-right-radius';
+                    if (side === 'bottomLeft') cssProp = 'border-bottom-left-radius';
+                } else {
+                    cssProp = `${prop}-${side}`;
+                }
+
+                if (selectedElement.originalStyles && selectedElement.originalStyles[cssProp] !== undefined) {
+                    return selectedElement.originalStyles[cssProp];
+                }
+                return currentVal;
+            };
+
             const initialState = {
                 display: selectedElement.boxModel.display,
                 width: selectedElement.inlineStyle?.width || (selectedElement.width + 'px'),
@@ -66,9 +97,54 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                 }
             };
 
+            const originalState = {
+                display: getOriginal('display', initialState.display),
+                width: getOriginal('width', initialState.width),
+                height: getOriginal('height', initialState.height),
+                position: getOriginal('position', initialState.position),
+                top: getOriginal('top', initialState.top),
+                right: getOriginal('right', initialState.right),
+                bottom: getOriginal('bottom', initialState.bottom),
+                left: getOriginal('left', initialState.left),
+                padding: {
+                    top: getOriginalBoxModel('padding', 'top', initialState.padding.top),
+                    right: getOriginalBoxModel('padding', 'right', initialState.padding.right),
+                    bottom: getOriginalBoxModel('padding', 'bottom', initialState.padding.bottom),
+                    left: getOriginalBoxModel('padding', 'left', initialState.padding.left)
+                },
+                margin: {
+                    top: getOriginalBoxModel('margin', 'top', initialState.margin.top),
+                    right: getOriginalBoxModel('margin', 'right', initialState.margin.right),
+                    bottom: getOriginalBoxModel('margin', 'bottom', initialState.margin.bottom),
+                    left: getOriginalBoxModel('margin', 'left', initialState.margin.left)
+                },
+                borderRadius: {
+                    topLeft: getOriginalBoxModel('borderRadius', 'topLeft', initialState.borderRadius.topLeft),
+                    topRight: getOriginalBoxModel('borderRadius', 'topRight', initialState.borderRadius.topRight),
+                    bottomRight: getOriginalBoxModel('borderRadius', 'bottomRight', initialState.borderRadius.bottomRight),
+                    bottomLeft: getOriginalBoxModel('borderRadius', 'bottomLeft', initialState.borderRadius.bottomLeft)
+                },
+                flexGrid: {
+                    // Flex/Grid resets might be trickier if tracked property names differ (camelCase vs kebab)
+                    // internal tracker uses kebab for most, but let's check. 
+                    // Tracker essentially stores what we passed it. 
+                    // content.js sends kebab for standard properties.
+                    flexDirection: getOriginal('flex-direction', initialState.flexGrid.flexDirection),
+                    justifyContent: getOriginal('justify-content', initialState.flexGrid.justifyContent),
+                    alignItems: getOriginal('align-items', initialState.flexGrid.alignItems),
+                    gap: getOriginal('gap', initialState.flexGrid.gap),
+                    rowGap: getOriginal('row-gap', initialState.flexGrid.rowGap),
+                    columnGap: getOriginal('column-gap', initialState.flexGrid.columnGap),
+                    gridTemplateColumns: getOriginal('grid-template-columns', initialState.flexGrid.gridTemplateColumns),
+                    gridTemplateRows: getOriginal('grid-template-rows', initialState.flexGrid.gridTemplateRows),
+                    gridAutoFlow: getOriginal('grid-auto-flow', initialState.flexGrid.gridAutoFlow),
+                    gridItems: initialState.flexGrid.gridItems // Items aren't style props directly
+                }
+            };
+
             // Only update original styles when we select a NEW element
             if (previousCpId.current !== selectedElement.cpId) {
-                setOriginalStyles(initialState);
+                setOriginalStyles(originalState);
                 previousCpId.current = selectedElement.cpId;
             }
 

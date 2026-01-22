@@ -204,7 +204,8 @@ function getElementInfo(el) {
             marginLeft: el.style.marginLeft,
             gap: el.style.gap
         },
-        hierarchy: getShallowHierarchy(el)
+        hierarchy: getShallowHierarchy(el),
+        originalStyles: tracker.getAllOriginals(el)
     };
 }
 
@@ -465,26 +466,24 @@ async function extractAssetsData() {
     });
 }
 
-// Global Message Listener Update
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === 'SCAN_PAGE') {
-        extractOverviewData().then(sendResponse);
-        return true;
-    }
+// Initialize Tracker
+const tracker = new window.CSSPicker.ElementChangeTracker();
 
-    if (request.type === 'SCAN_ASSETS') {
-        extractAssetsData().then(sendResponse);
-        return true;
-    }
+// Handlers Interface
+const handlers = {
+    onScanPage: extractOverviewData,
+    onScanAssets: extractAssetsData,
 
-    if (request.type === 'START_PICKING') {
+    onStartPicking: () => {
         if (!isPicking) {
             isPicking = true;
             createOverlay();
             document.addEventListener('mousemove', handleMouseMove, { passive: true });
             document.addEventListener('click', handleClick, { capture: true });
         }
-    } else if (request.type === 'STOP_PICKING') {
+    },
+
+    onStopPicking: () => {
         if (isPicking) {
             isPicking = false;
             removeOverlay();
@@ -492,65 +491,48 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             document.removeEventListener('click', handleClick, { capture: true });
             lastElement = null;
         }
-    } else if (request.type === 'UPDATE_CLASSES') {
-        const { cpId, className } = request.payload;
+    },
+
+    onSelectNode: (cpId, sendResponse) => {
         const el = document.querySelector(`[data-cp-id="${cpId}"]`);
         if (el) {
-            el.className = className;
             lastElement = el;
-            createOverlay();
-            updateHighlight(el);
-        }
-    } else if (request.type === 'UPDATE_STYLE') {
-        const { cpId, styles } = request.payload;
-        const el = document.querySelector(`[data-cp-id="${cpId}"]`);
-        if (el) {
-            Object.entries(styles).forEach(([p, v]) => {
-                if (v === null || v === undefined) return;
-                if (typeof v === 'object' && v !== null && (p === 'padding' || p === 'margin' || p === 'borderRadius')) {
-                    if (p === 'borderRadius') {
-                        el.style.setProperty('border-top-left-radius', v.topLeft, 'important');
-                        el.style.setProperty('border-top-right-radius', v.topRight, 'important');
-                        el.style.setProperty('border-bottom-right-radius', v.bottomRight, 'important');
-                        el.style.setProperty('border-bottom-left-radius', v.bottomLeft, 'important');
-                    } else {
-                        el.style.setProperty(`${p}-top`, v.top, 'important');
-                        el.style.setProperty(`${p}-right`, v.right, 'important');
-                        el.style.setProperty(`${p}-bottom`, v.bottom, 'important');
-                        el.style.setProperty(`${p}-left`, v.left, 'important');
-                    }
-                } else {
-                    const camelToKebab = p.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-                    el.style.setProperty(camelToKebab, v, 'important');
-                }
-            });
-            // Snap highlight to the element being manipulated
-            lastElement = el;
-            createOverlay();
-            updateHighlight(el);
             sendResponse(getElementInfo(el));
         }
-    } else if (request.type === 'HIGHLIGHT_NODE') {
-        const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
+    },
+
+    onHighlightNode: (cpId, noScroll) => {
+        const el = document.querySelector(`[data-cp-id="${cpId}"]`);
         if (el) {
             lastElement = el;
             createOverlay(); // Ensure overlay exists
             updateHighlight(el);
-            if (!request.payload.noScroll) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!noScroll) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-    } else if (request.type === 'SELECT_NODE') {
-        const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
-        if (el) {
-            lastElement = el;
-            sendResponse(getElementInfo(el));
-        }
-    } else if (request.type === 'HIGHLIGHT_GRID_AREA') {
-        const el = document.querySelector(`[data-cp-id="${request.payload.cpId}"]`);
+    },
+
+    onUpdateHighlight: (el) => {
+        lastElement = el;
+        createOverlay();
+        updateHighlight(el);
+    },
+
+    getComputedInfo: (el) => {
+        return getElementInfo(el);
+    },
+
+    onHighlightGridArea: (payload) => {
+        const el = document.querySelector(`[data-cp-id="${payload.cpId}"]`);
         if (el) {
             createOverlay();
-            updateCellHighlight(el, request.payload);
+            updateCellHighlight(el, payload);
         }
-    } else if (request.type === 'CLEAR_GRID_AREA') {
+    },
+
+    onClearGridArea: () => {
         if (cellHighlightBox) cellHighlightBox.style.display = 'none';
     }
-});
+};
+
+// Initialize Messaging
+window.CSSPicker.setupMessageListeners(tracker, handlers);

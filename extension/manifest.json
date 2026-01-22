@@ -27,7 +27,14 @@
                 "<all_urls>"
             ],
             "js": [
-                "content.js"
+                "content-script/tracker.js",
+                "content-script/messaging.js",
+                "content-script/utils.js",
+                "content-script/inspector.js",
+                "content-script/overlay.js",
+                "content-script/picking.js",
+                "content-script/scanner.js",
+                "content-script/init.js"
             ]
         }
     ]
