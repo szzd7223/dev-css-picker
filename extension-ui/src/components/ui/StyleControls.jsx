@@ -132,7 +132,8 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
 
     return (
         <div className="mb-3 group relative">
-            <div className={`flex ${stacked ? 'flex-col gap-1 items-start' : 'justify-between items-center'} mb-1`}>
+            {/* Row 1: Label & Reset */}
+            <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                     {label && <label className="text-xs font-medium text-slate-400 uppercase">{label}</label>}
                     {isChanged && (
@@ -145,68 +146,73 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                         </button>
                     )}
                 </div>
-                <div className={`flex items-center gap-2 shrink-0 ${stacked ? 'w-full justify-between' : ''}`}>
+            </div>
+
+            {/* Row 2: Controls (Auto Toggle & Input) */}
+            <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex-1">
                     {allowAuto && (
                         <button
                             onClick={toggleAuto}
-                            className={`text-[9px] px-1 py-0.5 rounded border transition-colors uppercase font-bold tracking-wider ${isAuto ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'} ${stacked ? 'flex-1 text-center justify-center flex' : ''}`}
+                            className={`text-[9px] px-2 py-1 rounded border transition-colors uppercase font-bold tracking-wider flex items-center gap-1 ${isAuto ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}
                             title="Toggle Auto"
                         >
+                            <div className={`w-1.5 h-1.5 rounded-full ${isAuto ? 'bg-blue-400' : 'bg-slate-600'}`} />
                             Auto
                         </button>
                     )}
+                </div>
 
-                    {/* Value Display & Unit Selector */}
-                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 focus-within:border-blue-500/50 transition-colors">
-                        <input
-                            type="text"
-                            value={isAuto ? (placeholderValue || '') : num}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                // Allow empty or minus sign for typing
-                                if (val === '' || val === '-') {
-                                    onChange(`${val}${unit}`);
-                                    return;
-                                }
-                                const parsed = parseFloat(val);
-                                if (!isNaN(parsed)) {
-                                    onChange(`${val}${unit}`);
-                                }
-                            }}
-                            className={`w-10 text-xs font-mono font-bold border-none p-0 text-right outline-none focus:ring-0 appearance-none bg-transparent ${isAuto ? 'text-slate-500' : 'text-slate-200'}`}
-                        />
-                        {!isAuto && !unitless && (
-                            <div className="relative">
-                                {hideUnitSelector ? (
-                                    <span className="text-[10px] text-slate-600 font-medium px-1">px</span>
-                                ) : (
-                                    <button
-                                        onClick={() => setShowUnits(!showUnits)}
-                                        className="text-[10px] text-slate-500 hover:text-blue-400 font-medium flex items-center"
-                                    >
-                                        {unit}
-                                    </button>
-                                )}
-                                {showUnits && !hideUnitSelector && (
-                                    <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col min-w-[50px]">
-                                        {UNITS.map(u => (
-                                            <button
-                                                key={u}
-                                                onClick={() => handleUnitChange(u)}
-                                                className={`text-[10px] px-2 py-1 text-left hover:bg-slate-700 ${u === unit ? 'text-blue-400 font-bold' : 'text-slate-400'}`}
-                                            >
-                                                {u}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                {/* Value Display & Unit Selector */}
+                <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors w-24">
+                    <input
+                        type="text"
+                        value={isAuto ? (placeholderValue || '') : num}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            // Allow empty or minus sign for typing
+                            if (val === '' || val === '-') {
+                                onChange(`${val}${unit}`);
+                                return;
+                            }
+                            const parsed = parseFloat(val);
+                            if (!isNaN(parsed)) {
+                                onChange(`${val}${unit}`);
+                            }
+                        }}
+                        className={`w-full text-xs font-mono font-bold border-none p-0 text-right outline-none focus:ring-0 appearance-none bg-transparent ${isAuto ? 'text-slate-500' : 'text-slate-200'}`}
+                    />
+                    {!isAuto && !unitless && (
+                        <div className="relative border-l border-slate-800 pl-2 ml-2">
+                            {hideUnitSelector ? (
+                                <span className="text-[10px] text-slate-600 font-medium">{unit}</span>
+                            ) : (
+                                <button
+                                    onClick={() => setShowUnits(!showUnits)}
+                                    className="text-[10px] text-slate-500 hover:text-blue-400 font-medium flex items-center hover:bg-slate-900 rounded px-1 -mr-1"
+                                >
+                                    {unit}
+                                </button>
+                            )}
+                            {showUnits && !hideUnitSelector && (
+                                <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col min-w-[50px]">
+                                    {UNITS.map(u => (
+                                        <button
+                                            key={u}
+                                            onClick={() => handleUnitChange(u)}
+                                            className={`text-[10px] px-2 py-1 text-left hover:bg-slate-700 ${u === unit ? 'text-blue-400 font-bold' : 'text-slate-400'}`}
+                                        >
+                                            {u}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Slider */}
+            {/* Row 3: Slider */}
             {!hideSlider && (
                 <div className="flex items-center gap-2">
                     <input
