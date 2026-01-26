@@ -42,25 +42,11 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
         }
     }, [selectedElement]);
 
-    const sendLiveUpdate = (updatedStyles) => {
-        if (!selectedElement) return;
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    type: 'UPDATE_STYLE',
-                    payload: {
-                        cpId: selectedElement.cpId,
-                        styles: updatedStyles
-                    }
-                }).catch(() => { });
-            }
-        });
-    };
+
 
     const handleStyleChange = (property, value) => {
         const nextStyles = { ...localStyles, [property]: value };
         setLocalStyles(nextStyles);
-        sendLiveUpdate({ [property]: value });
         if (onUpdateElement) onUpdateElement({ [property]: value });
     };
 
@@ -138,7 +124,6 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                                         borderStyle: 'solid'
                                     };
                                     setLocalStyles(nextStyles);
-                                    sendLiveUpdate({ borderWidth: val, borderStyle: 'solid' });
                                     if (onUpdateElement) onUpdateElement({ borderWidth: val, borderStyle: 'solid' });
                                 } else {
                                     handleStyleChange('borderWidth', val);

@@ -27,6 +27,18 @@ function normalizeColor(color) {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
+function getNormalizedRadius(pxValue, width, height) {
+    const px = parseFloat(pxValue);
+    if (isNaN(px)) return pxValue;
+
+    const limit = Math.min(width, height) / 2;
+    // If radius is effectively half-size OR larger (e.g. 9999px from tailwind), treat as 50%
+    if (px >= limit - 1.5) {
+        return '50%';
+    }
+    return pxValue;
+}
+
 // Hierarchy extraction
 function getNodeData(el, isTarget = false, isChild = false) {
     const tagName = el.tagName.toLowerCase();
@@ -152,10 +164,10 @@ function getElementInfo(el) {
                 left: style.marginLeft
             },
             borderRadius: {
-                topLeft: style.borderTopLeftRadius,
-                topRight: style.borderTopRightRadius,
-                bottomRight: style.borderBottomRightRadius,
-                bottomLeft: style.borderBottomLeftRadius
+                topLeft: getNormalizedRadius(style.borderTopLeftRadius, rect.width, rect.height),
+                topRight: getNormalizedRadius(style.borderTopRightRadius, rect.width, rect.height),
+                bottomRight: getNormalizedRadius(style.borderBottomRightRadius, rect.width, rect.height),
+                bottomLeft: getNormalizedRadius(style.borderBottomLeftRadius, rect.width, rect.height)
             },
             borderWidth: style.borderTopWidth,
             borderStyle: style.borderTopStyle,

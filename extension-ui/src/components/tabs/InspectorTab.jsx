@@ -21,9 +21,50 @@ export default function InspectorTab() {
     const [isCopied, setIsCopied] = useState(false);
     const [pageError, setPageError] = useState(null);
 
+    // Flatten styles for snippet generator (Translator Layer)
+    const flattenElementStyles = (el) => {
+        if (!el) return {};
+        // Map deeply nested structure to flat structure expected by generators
+        return {
+            ...el.inlineStyle, // Start with inline overrides if any
+            // Layout
+            display: el.boxModel?.display,
+            width: el.width ? `${el.width}px` : undefined, // computed width is number
+            height: el.height ? `${el.height}px` : undefined, // computed height is number
+
+            // Typography
+            color: el.colors?.text,
+            fontSize: el.typography?.size,
+            fontWeight: el.typography?.weight,
+
+            // Background
+            backgroundColor: el.colors?.background,
+
+            // Box Model
+            padding: el.boxModel?.padding,
+            margin: el.boxModel?.margin,
+            borderRadius: el.boxModel?.borderRadius,
+            borderWidth: el.boxModel?.borderWidth,
+            borderColor: el.colors?.border,
+
+            // Positioning
+            position: el.positioning?.position,
+            top: el.positioning?.top,
+            right: el.positioning?.right,
+            bottom: el.positioning?.bottom,
+            left: el.positioning?.left,
+            zIndex: el.positioning?.zIndex,
+
+            // Flex/Grid comes from its own object, pass it as is or flat? 
+            // Generator expects `styles.flexGrid` object for advanced props.
+            flexGrid: el.flexGrid
+        };
+    };
+
     // Derived State for Snippets
-    const generatedCode = selectedElement ? generateTailwindClasses(selectedElement) : '';
-    const generatedCss = selectedElement ? generateCSS(selectedElement, selectedElement.tagName.toLowerCase()) : '';
+    const flatStyles = selectedElement ? flattenElementStyles(selectedElement) : {};
+    const generatedCode = selectedElement ? generateTailwindClasses(flatStyles) : '';
+    const generatedCss = selectedElement ? generateCSS(flatStyles, selectedElement.tagName.toLowerCase()) : '';
 
     // Helper for flattened style access (safe access for UI controls)
     const getStyle = (path) => {

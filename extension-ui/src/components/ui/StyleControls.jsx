@@ -420,8 +420,7 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
 
     const [userWantsExpanded, setUserWantsExpanded] = useState(false);
 
-    // Default to collapsed unless user explicitly expands, to fulfill "single slider" request.
-    // However, if they are different, we might want to alert, but user asked for "put slider to value".
+    // Default to collapsed unless user explicitly expands
     const isExpanded = userWantsExpanded;
 
     // Determine representative value (Max of corners)
@@ -448,6 +447,11 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
         onChange({ ...current, [corner]: val });
     };
 
+    // Quick Shape Handlers
+    const setSquare = () => handleAllChange('0px');
+    const setRounded = () => handleAllChange('6px');
+    const setCircle = () => handleAllChange('50%');
+
     return (
         <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 mb-3">
             <div className="flex items-center justify-between mb-2">
@@ -459,16 +463,18 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
                 </label>
 
                 <div className="flex items-center gap-1">
-                    {areCornersDifferent && isExpanded && (
-                        <button
-                            onClick={() => handleAllChange(representativeValue)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
-                            title="Sync all to max value"
-                        >
-                            <Equal size={10} />
-                            <span>Sync</span>
+                    {/* Quick Presets */}
+                    <div className="flex bg-slate-800 rounded mr-2 border border-slate-700">
+                        <button onClick={setSquare} className="p-1 hover:bg-slate-700 text-slate-400 hover:text-white rounded-l" title="Square (0px)">
+                            <div className="w-3 h-3 border-2 border-current rounded-none"></div>
                         </button>
-                    )}
+                        <button onClick={setRounded} className="p-1 hover:bg-slate-700 text-slate-400 hover:text-white border-l border-slate-700" title="Rounded (6px)">
+                            <div className="w-3 h-3 border-2 border-current rounded-sm"></div>
+                        </button>
+                        <button onClick={setCircle} className="p-1 hover:bg-slate-700 text-slate-400 hover:text-white rounded-r border-l border-slate-700" title="Circle (50%)">
+                            <div className="w-3 h-3 border-2 border-current rounded-full"></div>
+                        </button>
+                    </div>
 
                     <button
                         onClick={() => setUserWantsExpanded(!userWantsExpanded)}

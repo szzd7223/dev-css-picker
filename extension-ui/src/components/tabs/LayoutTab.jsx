@@ -165,29 +165,11 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
         }
     }, [selectedElement, computedGrid]);
 
-    const sendLiveUpdate = (updatedStyles, callback) => {
-        if (!selectedElement) return;
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    type: 'UPDATE_STYLE',
-                    payload: {
-                        cpId: selectedElement.cpId,
-                        styles: updatedStyles
-                    }
-                })
-                    .then((response) => {
-                        if (callback && response) callback(response);
-                    })
-                    .catch(() => { });
-            }
-        });
-    };
+
 
     const handleStyleChange = (property, value) => {
         const nextStyles = { ...localStyles, [property]: value };
         setLocalStyles(nextStyles);
-        sendLiveUpdate({ [property]: value });
         if (onUpdateElement) onUpdateElement({ [property]: value });
     };
 
@@ -213,17 +195,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
             updatePayload.columnGap = value;
         }
 
-        sendLiveUpdate(updatePayload, (newInfo) => {
-            if (newInfo && newInfo.flexGrid) {
-                setComputedGrid({
-                    columns: newInfo.flexGrid.gridTemplateColumns,
-                    rows: newInfo.flexGrid.gridTemplateRows,
-                    items: newInfo.flexGrid.gridItems
-                });
-            }
-        });
-
-        if (onUpdateElement) onUpdateElement({ [prop]: value });
+        if (onUpdateElement) onUpdateElement(updatePayload);
     };
 
     const handleSyncGaps = () => {
@@ -550,33 +522,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                     onChange={(val) => handleStyleChange('borderRadius', val)}
                     originalValues={originalStyles.borderRadius}
                     onReset={() => handleReset('borderRadius')}
-                    max={(() => {
-                        // 1. Get the current visual limit in Pixels
-                        // Fallback to computed size if auto/% is used for dimension
-                        const wPx = convertToPx(localStyles.width, selectedElement?.width || 0);
-                        const hPx = convertToPx(localStyles.height, selectedElement?.height || 0);
-                        const visualLimitPx = Math.min(wPx, hPx) / 2;
-
-                        // 2. Identify the unit the user is currently using for radius
-                        // RadiusInput identifies a "representative value" and its unit.
-                        // We need to convert our pixel limit into THAT unit for the slider max.
-                        const radiusObj = typeof localStyles.borderRadius === 'string'
-                            ? { topLeft: localStyles.borderRadius }
-                            : (localStyles.borderRadius || { topLeft: '0px' });
-
-                        const firstVal = Object.values(radiusObj)[0] || '0px';
-                        const match = String(firstVal).match(/[a-z%]+$/);
-                        const currentRadiusUnit = match ? match[0] : 'px';
-
-                        if (currentRadiusUnit === '%') return 50;
-
-                        // Reference for % conversion is the same logic as convertToPx but we use visualLimitPx
-                        // Actually, just convert back using the dedicated utility
-                        const reference = (wPx + hPx) / 2; // Rough average or min for %? CSS says % is relative to size.
-                        // For radius, 50% means meet in middle.
-
-                        return convertFromPx(visualLimitPx, currentRadiusUnit, reference);
-                    })()}
+                    max={100}
                 />
             </section>
         </div>
