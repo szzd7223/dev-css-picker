@@ -3,10 +3,12 @@ import { Palette, Layers, Code, Droplet } from 'lucide-react';
 import { SliderInput, ColorInput, SelectInput } from '../ui/StyleControls';
 import { parseGradient, buildGradientString } from '../../utils/gradientParser';
 import { cleanStyleValue } from '../../utils/styleUtils';
+import { useDevToolsStore } from '../../store/devtools';
 
 export default function ColorsTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
+    const { isInspectMode, setInspectMode } = useDevToolsStore();
 
     useEffect(() => {
         if (selectedElement) {
@@ -71,9 +73,31 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
 
     if (!selectedElement) {
         return (
-            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in text-slate-400">
-                <Palette size={32} className="mb-4 text-slate-600" />
-                <p>Select an element to edit its colors.</p>
+            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
+                <div className={`w-16 h-16 ${isInspectMode ? 'bg-slate-800' : 'bg-slate-800/50'} text-blue-500 rounded-full flex items-center justify-center mb-4`}>
+                    <Palette size={32} strokeWidth={1.5} className={isInspectMode ? 'animate-pulse' : 'opacity-40'} />
+                </div>
+                {isInspectMode ? (
+                    <>
+                        <h2 className="text-lg font-bold text-white mb-2">Inspector Mode Active</h2>
+                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                            Hover over elements on the page to see details. Click to lock selection.
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <h2 className="text-lg font-bold text-white mb-2">Style Colors</h2>
+                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                            Enable inspect mode to select an element and start editing colors and backgrounds.
+                        </p>
+                        <button
+                            onClick={() => setInspectMode(true)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                        >
+                            Enable Inspect Mode
+                        </button>
+                    </>
+                )}
             </div>
         );
     }

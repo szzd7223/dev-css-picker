@@ -3,12 +3,15 @@ import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout, Equal } from 'lu
 import { SliderInput, SelectInput, SpacingInput, RadiusInput, convertToPx, convertFromPx } from '../ui/StyleControls';
 import GridMap from '../ui/GridMap';
 import { cleanStyleValue } from '../../utils/styleUtils';
+import { useDevToolsStore } from '../../store/devtools';
 
 export default function LayoutTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
     const [computedGrid, setComputedGrid] = useState(null);
     const previousCpId = useRef(null);
+
+    const { isInspectMode, setInspectMode } = useDevToolsStore();
 
     // Sync state with selected element
     useEffect(() => {
@@ -286,7 +289,36 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
     };
 
 
-    if (!selectedElement) return null;
+    if (!selectedElement) {
+        return (
+            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
+                <div className={`w-16 h-16 ${isInspectMode ? 'bg-slate-800' : 'bg-slate-800/50'} text-blue-500 rounded-full flex items-center justify-center mb-4`}>
+                    <Layout size={32} strokeWidth={1.5} className={isInspectMode ? 'animate-pulse' : 'opacity-40'} />
+                </div>
+                {isInspectMode ? (
+                    <>
+                        <h2 className="text-lg font-bold text-white mb-2">Inspector Mode Active</h2>
+                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                            Hover over elements on the page to see details. Click to lock selection.
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <h2 className="text-lg font-bold text-white mb-2">Setup Layout</h2>
+                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                            Enable inspect mode to select an element and start adjusting its layout and position.
+                        </p>
+                        <button
+                            onClick={() => setInspectMode(true)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                        >
+                            Enable Inspect Mode
+                        </button>
+                    </>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 space-y-6 animate-fade-in pb-24">
