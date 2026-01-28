@@ -435,13 +435,8 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
     // State for Fine Tune Mode
     const [isFineTune, setIsFineTune] = useState(false);
 
-    // Auto-detect if we should show fine tune (e.g. if loaded with weird value)
-    useEffect(() => {
-        const isPreset = ['0px', '0', '2px', '0.125rem', '6px', '0.375rem', '8px', '0.5rem', '9999px', '50%'].includes(representativeValue) && !areCornersDifferent;
-        if (!isPreset && maxValue > 0) {
-            setIsFineTune(true);
-        }
-    }, [representativeValue, areCornersDifferent, maxValue]);
+    // Auto-detect removed: Fine Tune always hidden by default per user request
+
 
     const handleAllChange = (val) => {
         onChange({ topLeft: val, topRight: val, bottomRight: val, bottomLeft: val });

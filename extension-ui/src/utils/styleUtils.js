@@ -151,16 +151,22 @@ export function generateTailwindClasses(styles) {
     // Border
     if (styles.borderRadius) {
         const val = styles.borderRadius;
-        // Check for 50% or 9999px (common full rounded values)
-        if (String(val) === '50%' || String(val) === '9999px') {
+
+        const isFull = (v) => {
+            const s = String(v);
+            if (s === '50%' || s === '9999px') return true;
+            // Handle scientific notation or large pixels (e.g. 2.5e+7px)
+            const num = parseFloat(s);
+            return !isNaN(num) && num > 999;
+        };
+
+        if (isFull(val)) {
             classes.push('rounded-full');
         } else if (typeof val === 'string') {
             classes.push(getTwClassFromScale(val, 'rounded', RADIUS_SCALE));
         } else if (typeof val === 'object') {
             const { topLeft, topRight, bottomRight, bottomLeft } = val;
 
-            // Check for "full" equivalents in object form
-            const isFull = (v) => String(v) === '50%' || String(v) === '9999px';
             if (isFull(topLeft) && isFull(topRight) && isFull(bottomRight) && isFull(bottomLeft)) {
                 classes.push('rounded-full');
             }
