@@ -151,16 +151,22 @@ export function generateTailwindClasses(styles) {
     // Border
     if (styles.borderRadius) {
         const val = styles.borderRadius;
-        if (val === '50%') {
+        // Check for 50% or 9999px (common full rounded values)
+        if (String(val) === '50%' || String(val) === '9999px') {
             classes.push('rounded-full');
         } else if (typeof val === 'string') {
             classes.push(getTwClassFromScale(val, 'rounded', RADIUS_SCALE));
         } else if (typeof val === 'object') {
             const { topLeft, topRight, bottomRight, bottomLeft } = val;
+
+            // Check for "full" equivalents in object form
+            const isFull = (v) => String(v) === '50%' || String(v) === '9999px';
+            if (isFull(topLeft) && isFull(topRight) && isFull(bottomRight) && isFull(bottomLeft)) {
+                classes.push('rounded-full');
+            }
             // All same
-            if (topLeft === topRight && topLeft === bottomRight && topLeft === bottomLeft) {
-                if (topLeft === '50%') classes.push('rounded-full');
-                else if (topLeft && topLeft !== '0px') classes.push(getTwClassFromScale(topLeft, 'rounded', RADIUS_SCALE));
+            else if (topLeft === topRight && topLeft === bottomRight && topLeft === bottomLeft) {
+                if (topLeft && topLeft !== '0px') classes.push(getTwClassFromScale(topLeft, 'rounded', RADIUS_SCALE));
             }
             // Top/Bottom (e.g. rounded-t-lg)
             else if (topLeft === topRight && bottomLeft === bottomRight && topLeft !== bottomLeft) {
@@ -181,7 +187,18 @@ export function generateTailwindClasses(styles) {
             }
         }
     }
-    if (styles.borderWidth && styles.borderWidth !== '0px') classes.push(`border-[${styles.borderWidth}]`);
+
+    if (styles.borderWidth && styles.borderWidth !== '0px') {
+        const bw = styles.borderWidth;
+        const widthMap = { '1px': 'border', '2px': 'border-2', '4px': 'border-4', '8px': 'border-8' };
+
+        if (widthMap[bw]) {
+            classes.push(widthMap[bw]);
+        } else {
+            classes.push(`border-[${bw}]`);
+        }
+    }
+
     if (styles.borderColor) classes.push(getTwColor(styles.borderColor, 'border'));
 
     // Positioning
