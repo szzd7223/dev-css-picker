@@ -34,7 +34,7 @@ window.CSSPicker.setupMessageListeners = function (tracker, handlers) {
             if (handlers.onHighlightNode) handlers.onHighlightNode(request.payload.cpId, request.payload.noScroll);
         }
 
-        // 4. STYLE UPDATES (The Core Fix)
+        // 4. STYLE UPDATES
         else if (request.type === 'UPDATE_STYLE') {
             const { cpId, styles } = request.payload;
             const el = document.querySelector(`[data-cp-id="${cpId}"]`);
@@ -42,23 +42,8 @@ window.CSSPicker.setupMessageListeners = function (tracker, handlers) {
             if (el) {
                 // Apply changes via tracker
                 Object.entries(styles).forEach(([prop, val]) => {
-                    // Special case for box model shorthands if passed as object
-                    // The store passes 'padding' as object? No, the store passes what it gets.
-                    // But standard CSS properties are strings.
-                    // If the store sends 'padding' as an object (e.g. {top: '10px'...}), we must decompose it here
-                    // OR the store decomposes it.
-                    // Looking at `devtools.js` store implementation:
-                    // updateProperty receives (property, value).
-                    // If property is 'padding', value is likely { top: ... }.
-                    // Wait, `updateProperty` sends `{[property]: value}`.
-                    // So if I update 'padding', I send `{ padding: { top: '10px', ...} }` ?
-                    // NO, standard CSS properties like `padding` are shorthands.
-                    // The UI inputs usually update specific sides (paddingTop).
-                    // The `onUpdateElement` in `App.jsx` handled decomposition.
-                    // My `tracker.js` expects (element, property, value).
-                    // If I pass `padding`, I need to know if it's a shorthand string or object.
+                    // Handle Object Decomposition for Box Model properties
 
-                    // Let's handle the Decomposition HERE to be safe, matching legacy logic in content.js
 
                     if (typeof val === 'object' && val !== null && (prop === 'padding' || prop === 'margin' || prop === 'borderRadius')) {
                         if (prop === 'borderRadius') {

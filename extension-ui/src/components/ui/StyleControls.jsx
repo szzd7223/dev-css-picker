@@ -52,7 +52,7 @@ const parseValue = (val) => {
     if (!val || val === 'auto') return { num: 0, unit: 'px', isAuto: true };
     if (typeof val === 'number') return { num: val, unit: 'px', isAuto: false };
     const match = String(val).match(/^([\d.-]+)([a-z%]*)$/);
-    if (!match) return { num: 0, unit: 'px', isAuto: false }; // fallback
+    if (!match) return { num: '', unit: 'px', isAuto: false };
     return {
         num: parseFloat(match[1]),
         unit: match[2] || 'px',
@@ -220,7 +220,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                         min={currentMin}
                         max={currentMax}
                         step={step || (unit === 'rem' ? 0.1 : 1)}
-                        value={num}
+                        value={num === '' ? 0 : num}
                         disabled={isDisabled}
                         onChange={(e) => handleChange(e.target.value)}
                         className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-blue-500 ${isDisabled ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
@@ -397,7 +397,6 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
     // values is object { topLeft, topRight, bottomRight, bottomLeft } or string (if previously single)
     const getObj = (val) => {
         if (typeof val === 'string') return { topLeft: val, topRight: val, bottomRight: val, bottomLeft: val };
-        // Handle case where val is object but missing keys (e.g. initial load)
         const v = val || {};
         return {
             topLeft: v.topLeft || '0px',
@@ -418,27 +417,26 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
         norm(current.topLeft) !== norm(current.bottomRight) ||
         norm(current.topLeft) !== norm(current.bottomLeft);
 
-    const [userWantsExpanded, setUserWantsExpanded] = useState(false);
+    // Determine representative value
+    let representativeValue;
+    if (!areCornersDifferent) {
+        representativeValue = current.topLeft;
+    } else {
+        const maxValue = Math.max(
+            parseNum(current.topLeft),
+            parseNum(current.topRight),
+            parseNum(current.bottomRight),
+            parseNum(current.bottomLeft)
+        );
+        const representativeUnit = getUnit(current.topLeft) || getUnit(current.topRight) || 'px';
+        representativeValue = `${maxValue}${representativeUnit}`;
+    }
 
-    // Default to collapsed unless user explicitly expands, to fulfill "single slider" request.
-    // However, if they are different, we might want to alert, but user asked for "put slider to value".
-    const isExpanded = userWantsExpanded;
+    // State for Fine Tune Mode
+    const [isFineTune, setIsFineTune] = useState(false);
 
-    // Determine representative value (Max of corners)
-    const maxValue = Math.max(
-        parseNum(current.topLeft),
-        parseNum(current.topRight),
-        parseNum(current.bottomRight),
-        parseNum(current.bottomLeft)
-    );
+    // Auto-detect removed: Fine Tune always hidden by default per user request
 
-    // We keep the unit from the first non-zero corner, or default to px
-    const getUnit = (v) => {
-        const match = String(v).match(/[a-z%]+$/);
-        return match ? match[0] : 'px';
-    };
-    const representativeUnit = getUnit(current.topLeft) || getUnit(current.topRight) || 'px';
-    const representativeValue = `${maxValue}${representativeUnit}`;
 
     const handleAllChange = (val) => {
         onChange({ topLeft: val, topRight: val, bottomRight: val, bottomLeft: val });
@@ -448,75 +446,109 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
         onChange({ ...current, [corner]: val });
     };
 
+    // Preset Handlers
+    const setPreset = (val) => {
+        handleAllChange(val);
+        setIsFineTune(false); // Hide fine tune when preset clicked
+    };
+
+    const PRESETS = [
+        { label: 'None', val: '0px', match: ['0px', '0'] },
+        { label: 'SM', val: '0.125rem', match: ['2px', '0.125rem'] },
+        { label: 'MD', val: '0.375rem', match: ['6px', '0.375rem'] },
+        { label: 'LG', val: '0.5rem', match: ['8px', '0.5rem'] },
+        { label: 'Full', val: '9999px', match: ['9999px', '50%'] },
+    ];
+
+    const isCurrentPreset = (matches) => {
+        if (areCornersDifferent) return false;
+        return matches.includes(representativeValue);
+    };
+
     return (
         <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 mb-3">
             <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium text-slate-400 uppercase flex items-center gap-2">
                     {label}
-                    {areCornersDifferent && !isExpanded && (
+                    {areCornersDifferent && (
                         <span className="text-[9px] bg-slate-700 px-1.5 py-0.5 rounded text-blue-300 ml-1">Mixed</span>
                     )}
                 </label>
 
-                <div className="flex items-center gap-1">
-                    {areCornersDifferent && isExpanded && (
+                <div className="flex items-center gap-2">
+                    {/* Toggle Fine Tune */}
+                    <button
+                        onClick={() => setIsFineTune(!isFineTune)}
+                        className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${isFineTune ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        {isFineTune ? 'Hide Controls' : 'Fine Tune'}
+                    </button>
+
+                    {/* Global Reset */}
+                    {(JSON.stringify(current) !== JSON.stringify(original)) && (
                         <button
-                            onClick={() => handleAllChange(representativeValue)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
-                            title="Sync all to max value"
+                            onClick={onReset}
+                            className="text-slate-600 hover:text-blue-400 transition-colors p-0.5"
+                            title="Reset to original"
                         >
-                            <Equal size={10} />
-                            <span>Sync</span>
+                            <RotateCcw size={10} />
                         </button>
                     )}
-
-                    <button
-                        onClick={() => setUserWantsExpanded(!userWantsExpanded)}
-                        className={`p-1 rounded transition-colors ${isExpanded
-                            ? 'bg-slate-700 text-blue-400'
-                            : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'
-                            }`}
-                        title={isExpanded ? "Collapse" : "Expand individual corners"}
-                    >
-                        {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                    </button>
                 </div>
             </div>
 
-            {isExpanded ? (
-                <div className="grid grid-cols-2 gap-x-4">
-                    <SliderInput
-                        label="Top-Left"
-                        value={current.topLeft}
-                        onChange={(v) => handleCornerChange('topLeft', v)}
-                        min={0} max={max}
-                    />
-                    <SliderInput
-                        label="Top-Right"
-                        value={current.topRight}
-                        onChange={(v) => handleCornerChange('topRight', v)}
-                        min={0} max={max}
-                    />
-                    <SliderInput
-                        label="Btm-Right"
-                        value={current.bottomRight}
-                        onChange={(v) => handleCornerChange('bottomRight', v)}
-                        min={0} max={max}
-                    />
-                    <SliderInput
-                        label="Btm-Left"
-                        value={current.bottomLeft}
-                        onChange={(v) => handleCornerChange('bottomLeft', v)}
-                        min={0} max={max}
-                    />
+            {/* Presets Row */}
+            <div className="flex items-center gap-1 mb-2 bg-slate-900/50 p-1 rounded-md border border-slate-800/50">
+                {PRESETS.map((preset) => (
+                    <button
+                        key={preset.label}
+                        onClick={() => setPreset(preset.val)}
+                        className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all border ${isCurrentPreset(preset.match) && !isFineTune
+                            ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
+                            : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                            }`}
+                    >
+                        {preset.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Fine Tune Controls (Hidden by default) */}
+            {isFineTune && (
+                <div className="animate-fade-in pt-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500 font-medium">Manual Input</span>
+                        <button
+                            onClick={() => setIsFineTune(false)} // Just verify if they want separate collapse
+                            className="text-[9px] text-slate-600 hover:text-blue-400 flex items-center gap-1"
+                        >
+                            {areCornersDifferent ? 'Collapse' : 'Expand Corners'}
+                        </button>
+                    </div>
+
+                    {/* If mixed or expanded, show 4 inputs, else 1 */}
+                    <div className="grid grid-cols-2 gap-2">
+                        {areCornersDifferent ? (
+                            <>
+                                <SliderInput label="TL" value={current.topLeft} onChange={(v) => handleCornerChange('topLeft', v)} min={0} max={max} hideSlider={true} />
+                                <SliderInput label="TR" value={current.topRight} onChange={(v) => handleCornerChange('topRight', v)} min={0} max={max} hideSlider={true} />
+                                <SliderInput label="BR" value={current.bottomRight} onChange={(v) => handleCornerChange('bottomRight', v)} min={0} max={max} hideSlider={true} />
+                                <SliderInput label="BL" value={current.bottomLeft} onChange={(v) => handleCornerChange('bottomLeft', v)} min={0} max={max} hideSlider={true} />
+                            </>
+                        ) : (
+                            <div className="col-span-2">
+                                <SliderInput
+                                    label={null}
+                                    value={representativeValue}
+                                    onChange={handleAllChange}
+                                    min={0} max={max}
+                                    hideSlider={true}
+                                    placeholderValue="0px"
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
-            ) : (
-                <SliderInput
-                    label={null}
-                    value={representativeValue}
-                    onChange={handleAllChange}
-                    min={0} max={max}
-                />
             )}
         </div>
     );

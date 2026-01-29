@@ -128,20 +128,8 @@ export const useDevToolsStore = create((set, get) => ({
         const { selectedElement } = get();
         if (!selectedElement) return;
 
-        // 1. Optimistic Update (Iterate to reuse logic)
-        // We reuse updateProperty for OPTIMISTIC state updates to keep logic DRY
-        // But we want to send ONE message.
-        // So we need to separate "updateState" from "sendMessage".
-        // For now, let's just manually update state locally by iterating, BUT skip the message in updateProperty?
-        // No, updateProperty sends message. 
-        // We should just allow the "Big" message to handle the sync, and rely on the response to fix state?
-        // OR we just iterate and suffer the N messages for now?
-        // The previous implementation sent N messages + 1 Big Message.
-        // To fix this cleanly requires refactoring.
-        // For minimal change: We will rely on the "Big Message" for the NETWORK sync, 
-        // and iterate updateProperty for LOCAL state sync. 
-        // BUT updateProperty sends a message.
-        // Let's just update the state manually here to avoid N messages.
+        // Optimistic State Update for Batch
+
 
         // Optimistic Batch Update
         const newElement = structuredClone(selectedElement);
@@ -164,23 +152,8 @@ export const useDevToolsStore = create((set, get) => ({
                 if (property === 'borderColor') newElement.colors.border = value;
                 // ...
             }
-            // For simplicity in this hotfix, we will just call set() once with a merged object 
-            // assuming the user is mostly using this for "Resets" which revert to known originals.
-            // Actually, the most robust way without refactoring everything is to just iterate updateProperty
-            // and accept the N messages, BUT remove the "Big Message" block?
-            // OR keep Big Message and don't call updateProperty?
+            // Manually merge nested objects for optimistic update
 
-            // Let's keep Big Message for valid network sync, and just set state once here for standard props.
-            // Realistically, updateProperty has complex logic for nested objects. 
-            // Rewriting it is risky.
-            // Let's iterate updateProperty but pass a flag 'skipMessage'? 
-            // No, can't change signature of exported function easily without checking consumers.
-            // App.jsx consumes it. 
-
-            // DECISION: We will iterate updateProperty (sending N messages). 
-            // It's inefficient but reliable for state consistency.
-            // We REMOVE the "Big Message" block from here to avoid race conditions.
-            // The N messages will each return 'originalStyles', effectively syncing slightly redundantly but correctly.
         });
 
         Object.entries(updates).forEach(([prop, val]) => {

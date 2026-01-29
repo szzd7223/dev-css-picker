@@ -151,16 +151,28 @@ export function generateTailwindClasses(styles) {
     // Border
     if (styles.borderRadius) {
         const val = styles.borderRadius;
-        if (val === '50%') {
+
+        const isFull = (v) => {
+            const s = String(v);
+            if (s === '50%' || s === '9999px') return true;
+            // Handle scientific notation or large pixels (e.g. 2.5e+7px)
+            const num = parseFloat(s);
+            return !isNaN(num) && num > 9999;
+        };
+
+        if (isFull(val)) {
             classes.push('rounded-full');
         } else if (typeof val === 'string') {
             classes.push(getTwClassFromScale(val, 'rounded', RADIUS_SCALE));
         } else if (typeof val === 'object') {
             const { topLeft, topRight, bottomRight, bottomLeft } = val;
+
+            if (isFull(topLeft) && isFull(topRight) && isFull(bottomRight) && isFull(bottomLeft)) {
+                classes.push('rounded-full');
+            }
             // All same
-            if (topLeft === topRight && topLeft === bottomRight && topLeft === bottomLeft) {
-                if (topLeft === '50%') classes.push('rounded-full');
-                else if (topLeft && topLeft !== '0px') classes.push(getTwClassFromScale(topLeft, 'rounded', RADIUS_SCALE));
+            else if (topLeft === topRight && topLeft === bottomRight && topLeft === bottomLeft) {
+                if (topLeft && topLeft !== '0px') classes.push(getTwClassFromScale(topLeft, 'rounded', RADIUS_SCALE));
             }
             // Top/Bottom (e.g. rounded-t-lg)
             else if (topLeft === topRight && bottomLeft === bottomRight && topLeft !== bottomLeft) {
@@ -181,7 +193,18 @@ export function generateTailwindClasses(styles) {
             }
         }
     }
-    if (styles.borderWidth && styles.borderWidth !== '0px') classes.push(`border-[${styles.borderWidth}]`);
+
+    if (styles.borderWidth && styles.borderWidth !== '0px') {
+        const bw = styles.borderWidth;
+        const widthMap = { '1px': 'border', '2px': 'border-2', '4px': 'border-4', '8px': 'border-8' };
+
+        if (widthMap[bw]) {
+            classes.push(widthMap[bw]);
+        } else {
+            classes.push(`border-[${bw}]`);
+        }
+    }
+
     if (styles.borderColor) classes.push(getTwColor(styles.borderColor, 'border'));
 
     // Positioning
