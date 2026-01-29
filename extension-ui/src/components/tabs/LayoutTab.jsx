@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Move, Layers, Maximize2, Minimize2, Grid, Layout, Equal } from 'lucide-react';
 import { SliderInput, SelectInput, SpacingInput, RadiusInput, convertToPx, convertFromPx } from '../ui/StyleControls';
-import GridMap from '../ui/GridMap';
+
 import { cleanStyleValue } from '../../utils/styleUtils';
 import { useDevToolsStore } from '../../store/devtools';
 
 export default function LayoutTab({ selectedElement, onUpdateElement }) {
     const [localStyles, setLocalStyles] = useState({});
     const [originalStyles, setOriginalStyles] = useState({});
-    const [computedGrid, setComputedGrid] = useState(null);
     const previousCpId = useRef(null);
 
     const { isInspectMode, setInspectMode } = useDevToolsStore();
@@ -154,16 +153,10 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
             // Always update local styles to reflect current state (externally or echo)
             setLocalStyles(initialState);
 
-            // Initialize computed grid if needed (or keep sync)
-            if (previousCpId.current !== selectedElement.cpId || !computedGrid) {
-                setComputedGrid({
-                    columns: selectedElement.flexGrid?.gridTemplateColumns,
-                    rows: selectedElement.flexGrid?.gridTemplateRows,
-                    items: selectedElement.flexGrid?.gridItems
-                });
-            }
+            // Always update local styles to reflect current state (externally or echo)
+            setLocalStyles(initialState);
         }
-    }, [selectedElement, computedGrid]);
+    }, [selectedElement]);
 
 
 
@@ -233,32 +226,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
         }
     };
 
-    const handleGridHover = (hoverInfo) => {
-        if (!selectedElement) return;
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    type: 'HIGHLIGHT_GRID_AREA',
-                    payload: {
-                        cpId: selectedElement.cpId,
-                        ...hoverInfo
-                    }
-                }).catch(() => { });
-            }
-        });
-    };
 
-    const handleGridLeave = () => {
-        if (!selectedElement) return;
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    type: 'CLEAR_GRID_AREA',
-                    payload: { cpId: selectedElement.cpId }
-                }).catch(() => { });
-            }
-        });
-    };
 
 
     if (!selectedElement) {
@@ -478,15 +446,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                                 ]}
                             />
 
-                            <GridMap
-                                columns={computedGrid?.columns || localStyles.flexGrid?.gridTemplateColumns}
-                                rows={computedGrid?.rows || localStyles.flexGrid?.gridTemplateRows}
-                                gap={localStyles.flexGrid?.gap}
-                                items={computedGrid?.items || localStyles.flexGrid?.gridItems}
-                                autoFlow={localStyles.flexGrid?.gridAutoFlow || 'row'}
-                                onHover={handleGridHover}
-                                onLeave={handleGridLeave}
-                            />
+
                         </>
                     )}
                 </section>

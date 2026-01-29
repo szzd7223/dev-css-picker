@@ -5,7 +5,7 @@ let isPicking = false;
 let overlayContainer = null;
 let shadowRoot = null;
 let highlightBox = null;
-let cellHighlightBox = null;
+
 let lastElement = null;
 
 // Utility for picking elements
@@ -270,16 +270,7 @@ function createOverlay() {
             color: rgba(255, 255, 255, 0.8);
             font-weight: 400;
         }
-        .cell-highlight {
-            position: fixed;
-            border: 2px solid #22c55e;
-            background: rgba(34, 197, 94, 0.2);
-            pointer-events: none;
-            z-index: 10001;
-            box-sizing: border-box;
-            border-radius: 2px;
-            display: none;
-        }
+
     `;
     shadowRoot.appendChild(style);
 
@@ -288,9 +279,7 @@ function createOverlay() {
     highlightBox.innerHTML = '<div class="highlight-tag"></div>';
     shadowRoot.appendChild(highlightBox);
 
-    cellHighlightBox = document.createElement('div');
-    cellHighlightBox.className = 'cell-highlight';
-    shadowRoot.appendChild(cellHighlightBox);
+
 }
 
 function removeOverlay() {
@@ -299,7 +288,7 @@ function removeOverlay() {
         overlayContainer = null;
         shadowRoot = null;
         highlightBox = null;
-        cellHighlightBox = null;
+
     }
 }
 
@@ -342,54 +331,7 @@ function updateHighlight(el) {
     }
 }
 
-function updateCellHighlight(el, info) {
-    if (!cellHighlightBox) return;
 
-    if (!info) {
-        cellHighlightBox.style.display = 'none';
-        return;
-    }
-
-    const rect = el.getBoundingClientRect();
-    const style = window.getComputedStyle(el);
-
-    if (info.type === 'item') {
-        const children = Array.from(el.children);
-        const child = children[info.index];
-        if (child) {
-            const crect = child.getBoundingClientRect();
-            cellHighlightBox.style.display = 'block';
-            cellHighlightBox.style.width = `${crect.width}px`;
-            cellHighlightBox.style.height = `${crect.height}px`;
-            cellHighlightBox.style.top = `${crect.top}px`;
-            cellHighlightBox.style.left = `${crect.left}px`;
-        }
-    } else if (info.type === 'cell') {
-        // Advanced cell coordinate calculation
-        const colTracks = style.gridTemplateColumns.split(' ').map(s => parseFloat(s));
-        const rowTracks = style.gridTemplateRows.split(' ').map(s => parseFloat(s));
-        const colGap = parseFloat(style.columnGap || style.gap) || 0;
-        const rowGap = parseFloat(style.rowGap || style.gap) || 0;
-        const paddingLeft = parseFloat(style.paddingLeft);
-        const paddingTop = parseFloat(style.paddingTop);
-
-        let x = rect.left + paddingLeft;
-        for (let i = 0; i < info.col - 1; i++) {
-            x += (colTracks[i] || 0) + colGap;
-        }
-
-        let y = rect.top + paddingTop;
-        for (let i = 0; i < info.row - 1; i++) {
-            y += (rowTracks[i] || 0) + rowGap;
-        }
-
-        cellHighlightBox.style.display = 'block';
-        cellHighlightBox.style.width = `${colTracks[info.col - 1]}px`;
-        cellHighlightBox.style.height = `${rowTracks[info.row - 1]}px`;
-        cellHighlightBox.style.top = `${y}px`;
-        cellHighlightBox.style.left = `${x}px`;
-    }
-}
 
 function handleMouseMove(e) {
     if (!isPicking) return;
@@ -532,17 +474,7 @@ const handlers = {
         return getElementInfo(el);
     },
 
-    onHighlightGridArea: (payload) => {
-        const el = document.querySelector(`[data-cp-id="${payload.cpId}"]`);
-        if (el) {
-            createOverlay();
-            updateCellHighlight(el, payload);
-        }
-    },
 
-    onClearGridArea: () => {
-        if (cellHighlightBox) cellHighlightBox.style.display = 'none';
-    }
 };
 
 // Initialize Messaging
