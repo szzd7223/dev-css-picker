@@ -52,7 +52,7 @@ const parseValue = (val) => {
     if (!val || val === 'auto') return { num: 0, unit: 'px', isAuto: true };
     if (typeof val === 'number') return { num: val, unit: 'px', isAuto: false };
     const match = String(val).match(/^([\d.-]+)([a-z%]*)$/);
-    if (!match) return { num: 0, unit: 'px', isAuto: false }; // fallback
+    if (!match) return { num: '', unit: 'px', isAuto: false };
     return {
         num: parseFloat(match[1]),
         unit: match[2] || 'px',
@@ -220,7 +220,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                         min={currentMin}
                         max={currentMax}
                         step={step || (unit === 'rem' ? 0.1 : 1)}
-                        value={num}
+                        value={num === '' ? 0 : num}
                         disabled={isDisabled}
                         onChange={(e) => handleChange(e.target.value)}
                         className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-blue-500 ${isDisabled ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
@@ -417,20 +417,20 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
         norm(current.topLeft) !== norm(current.bottomRight) ||
         norm(current.topLeft) !== norm(current.bottomLeft);
 
-    // Determine representative value (Max of corners)
-    const maxValue = Math.max(
-        parseNum(current.topLeft),
-        parseNum(current.topRight),
-        parseNum(current.bottomRight),
-        parseNum(current.bottomLeft)
-    );
-
-    const getUnit = (v) => {
-        const match = String(v).match(/[a-z%]+$/);
-        return match ? match[0] : 'px';
-    };
-    const representativeUnit = getUnit(current.topLeft) || getUnit(current.topRight) || 'px';
-    const representativeValue = `${maxValue}${representativeUnit}`;
+    // Determine representative value
+    let representativeValue;
+    if (!areCornersDifferent) {
+        representativeValue = current.topLeft;
+    } else {
+        const maxValue = Math.max(
+            parseNum(current.topLeft),
+            parseNum(current.topRight),
+            parseNum(current.bottomRight),
+            parseNum(current.bottomLeft)
+        );
+        const representativeUnit = getUnit(current.topLeft) || getUnit(current.topRight) || 'px';
+        representativeValue = `${maxValue}${representativeUnit}`;
+    }
 
     // State for Fine Tune Mode
     const [isFineTune, setIsFineTune] = useState(false);

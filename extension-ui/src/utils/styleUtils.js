@@ -157,7 +157,7 @@ export function generateTailwindClasses(styles) {
             if (s === '50%' || s === '9999px') return true;
             // Handle scientific notation or large pixels (e.g. 2.5e+7px)
             const num = parseFloat(s);
-            return !isNaN(num) && num > 999;
+            return !isNaN(num) && num > 9999;
         };
 
         if (isFull(val)) {

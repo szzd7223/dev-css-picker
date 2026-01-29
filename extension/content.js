@@ -31,10 +31,9 @@ function getNormalizedRadius(pxValue, width, height) {
     const px = parseFloat(pxValue);
     if (isNaN(px)) return pxValue;
 
-    const limit = Math.min(width, height) / 2;
-    // If radius is effectively half-size OR larger (e.g. 9999px from tailwind), treat as 50%
-    if (px >= limit - 1.5) {
-        return '50%';
+    // Only treat as rounded-full if explicitly huge (Tailwind convention > 9999px)
+    if (px > 9999) {
+        return '9999px';
     }
     return pxValue;
 }
