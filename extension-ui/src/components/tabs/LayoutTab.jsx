@@ -421,6 +421,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                                     { value: 'custom', label: 'Custom' },
                                 ]}
                             />
+
                             <SelectInput
                                 label="Rows"
                                 value={getGridPreset(localStyles.flexGrid?.gridTemplateRows)}
@@ -433,18 +434,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                                     { value: 'custom', label: 'Custom' },
                                 ]}
                             />
-                            <SelectInput
-                                label="Auto Flow"
-                                value={localStyles.flexGrid?.gridAutoFlow || 'row'}
-                                onChange={(val) => handleFlexGridChange('gridAutoFlow', val)}
-                                options={[
-                                    { value: 'row', label: 'Row' },
-                                    { value: 'column', label: 'Column' },
-                                    { value: 'dense', label: 'Dense' },
-                                    { value: 'row dense', label: 'Row Dense' },
-                                    { value: 'column dense', label: 'Column Dense' },
-                                ]}
-                            />
+
+
 
 
                         </>
