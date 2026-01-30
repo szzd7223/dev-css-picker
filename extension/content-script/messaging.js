@@ -13,10 +13,7 @@ window.CSSPicker.setupMessageListeners = function (tracker, handlers) {
             return true; // async response
         }
 
-        if (request.type === 'SCAN_ASSETS') {
-            if (handlers.onScanAssets) handlers.onScanAssets().then(sendResponse);
-            return true;
-        }
+
 
         // 2. PICKING MODES
         if (request.type === 'START_PICKING') {

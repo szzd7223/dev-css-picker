@@ -4,7 +4,7 @@
     console.log('CSS Picker: Content script modules loaded.');
 
     const { startPicking, stopPicking, setLastElement } = window.CSSPicker.picking;
-    const { extractOverviewData, extractAssetsData } = window.CSSPicker.scanner;
+    const { extractOverviewData } = window.CSSPicker.scanner;
     const { getElementInfo } = window.CSSPicker.inspector;
     const { createOverlay, updateHighlight, updateCellHighlight, clearCellHighlight } = window.CSSPicker.overlay;
 
@@ -19,7 +19,7 @@
     // Handlers Interface
     const handlers = {
         onScanPage: extractOverviewData,
-        onScanAssets: extractAssetsData,
+
 
         onStartPicking: startPicking,
 

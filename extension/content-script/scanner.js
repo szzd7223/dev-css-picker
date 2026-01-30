@@ -31,34 +31,10 @@
         };
     }
 
-    async function extractAssetsData() {
-        const assets = [];
-        const elements = document.querySelectorAll('*');
 
-        elements.forEach(el => {
-            const info = getAssetInfo(el);
-            if (info) {
-                const rect = el.getBoundingClientRect();
-                if (rect.width >= 10 && rect.height >= 10) {
-                    assets.push({
-                        cpId: getOrAssignId(el),
-                        ...info
-                    });
-                }
-            }
-        });
-
-        const seenUrls = new Set();
-        return assets.filter(asset => {
-            if (asset.type === 'SVG') return true;
-            if (seenUrls.has(asset.url)) return false;
-            seenUrls.add(asset.url);
-            return true;
-        });
-    }
 
     window.CSSPicker.scanner = {
         extractOverviewData,
-        extractAssetsData
+
     };
 })();
