@@ -195,12 +195,19 @@ export function generateTailwindClasses(styles) {
     }
 
     if (styles.borderWidth && styles.borderWidth !== '0px') {
-        const bw = styles.borderWidth;
+        let bw = styles.borderWidth;
+        // Round to nearest integer to avoid browser sub-pixel artifacts (e.g. 0.777px -> 1px)
+        const match = String(bw).match(/^([\d.]+)(px)?$/);
+        if (match) {
+            const num = Math.round(parseFloat(match[1]));
+            bw = `${num}px`;
+        }
+
         const widthMap = { '1px': 'border', '2px': 'border-2', '4px': 'border-4', '8px': 'border-8' };
 
         if (widthMap[bw]) {
             classes.push(widthMap[bw]);
-        } else {
+        } else if (bw !== '0px') {
             classes.push(`border-[${bw}]`);
         }
     }

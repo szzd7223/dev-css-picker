@@ -213,7 +213,15 @@ function getElementInfo(el) {
             marginRight: el.style.marginRight,
             marginBottom: el.style.marginBottom,
             marginLeft: el.style.marginLeft,
-            gap: el.style.gap
+            gap: el.style.gap,
+            // Added for input persistence
+            color: el.style.color,
+            backgroundColor: el.style.backgroundColor,
+            borderColor: el.style.borderColor,
+            borderStyle: el.style.borderStyle,
+            borderWidth: el.style.borderWidth,
+            borderRadius: el.style.borderRadius,
+            backgroundImage: el.style.backgroundImage
         },
         hierarchy: getShallowHierarchy(el),
         originalStyles: tracker.getAllOriginals(el)

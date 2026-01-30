@@ -1,8 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, ChevronDown, Maximize2, Minimize2, Equal } from 'lucide-react';
+import { RotateCcw, ChevronDown, Maximize2, Minimize2, Equal, Ban } from 'lucide-react';
 
 export const ColorInput = ({ label, value, onChange, originalValue, onReset }) => {
     const isChanged = originalValue !== undefined && value !== originalValue;
+    const [internalValue, setInternalValue] = useState(value || '');
+    const [isFocused, setIsFocused] = useState(false);
+
+    // Sync internal value with prop value when not focused, to allow external updates (like picking a color)
+    // without overwriting the user while they are typing.
+    useEffect(() => {
+        if (!isFocused) {
+            setInternalValue(value || '');
+        }
+    }, [value, isFocused]);
+
+    const handleCommit = () => {
+        if (internalValue !== value) {
+            onChange(internalValue);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleCommit();
+            e.currentTarget.blur();
+        }
+    };
 
     return (
         <div className="flex items-center justify-between mb-2 group">
@@ -37,10 +60,21 @@ export const ColorInput = ({ label, value, onChange, originalValue, onReset }) =
                 </div>
                 <input
                     type="text"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="w-20 text-xs font-mono border border-slate-700 bg-slate-950 rounded px-2 py-1 text-right text-slate-200 focus:border-blue-500 outline-none"
+                    value={internalValue}
+                    onChange={(e) => setInternalValue(e.target.value)}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => { setIsFocused(false); handleCommit(); }}
+                    onKeyDown={handleKeyDown}
+                    className="w-24 text-xs font-mono border border-slate-700 bg-slate-950 rounded px-2 py-1 text-right text-slate-200 focus:border-blue-500 outline-none"
+                    spellCheck={false}
                 />
+                <button
+                    onClick={() => onChange(value === 'transparent' ? '#000000' : 'transparent')}
+                    className={`h-7 w-7 flex items-center justify-center rounded border transition-colors ${value === 'transparent' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'}`}
+                    title="Toggle Transparent"
+                >
+                    <Ban size={14} />
+                </button>
             </div>
         </div>
     );
@@ -85,13 +119,29 @@ export const convertFromPx = (pxValue, targetUnit, referencePx = 1) => {
     }
 };
 
-export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allowAuto = false, originalValue, onReset, placeholderValue, hideUnitSelector = false, disabled = false, unitless = false, step, hideSlider = false, stacked = false }) => {
+export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allowAuto = false, originalValue, onReset, placeholderValue, hideUnitSelector = false, disabled = false, unitless = false, step, hideSlider = false, stacked = false, forceInteger = false }) => {
     const { num, unit: parsedUnit, isAuto } = parseValue(value);
     // If unitless, force empty string. Otherwise respect hideUnitSelector or parsed unit.
-    const unit = unitless ? '' : (hideUnitSelector ? 'px' : parsedUnit);
+    const unit = unitless ? '' : ((hideUnitSelector || forceInteger) ? 'px' : parsedUnit);
     const isChanged = originalValue !== undefined && value !== originalValue;
     const [showUnits, setShowUnits] = useState(false);
     const isDisabled = disabled || isAuto;
+
+    // Local state for text input to allow free typing without reset loops
+    // We store the RAW string user types (e.g. "10", "10.5", "") to avoid premature parsing/formatting
+    // If forceInteger is on, we might want to round the initial display, but maybe better to respect prop exactly?
+    // Let's round initial state if forceInteger is true to hide "0.777" immediately.
+    const initialVal = isAuto ? (placeholderValue || '') : (forceInteger ? Math.round(num) : num);
+    const [internalValue, setInternalValue] = useState(initialVal);
+    const [isFocused, setIsFocused] = useState(false);
+
+    // Sync from props -> internal state, ONLY if not focused
+    useEffect(() => {
+        if (!isFocused) {
+            setInternalValue(isAuto ? (placeholderValue || '') : (forceInteger ? Math.round(num) : num));
+        }
+    }, [value, isAuto, placeholderValue, num, isFocused, forceInteger]);
+
 
     // Adjust max based on unit
     let currentMax = max;
@@ -112,8 +162,20 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
         }
     }
 
-    const handleChange = (newVal) => {
-        onChange(`${newVal}${unit}`);
+    // Determine Step
+    // If unit is px (default) and no step provided, default to 1 (integer)
+    let currentStep = step;
+    if (!currentStep) {
+        if (forceInteger) currentStep = 1;
+        else if (unit === 'rem') currentStep = 0.1;
+        else if (unit === 'px' || !unit) currentStep = 1;
+        else currentStep = 1;
+    }
+
+    // Slider is "live" - it updates parent immediately, which updates props, which updates internal state (via effect)
+    const handleSliderChange = (newVal) => {
+        const valToEmit = forceInteger ? Math.round(newVal) : newVal;
+        onChange(`${valToEmit}${unit}`);
     };
 
     const handleUnitChange = (newUnit) => {
@@ -127,6 +189,37 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
             onChange(`${placeholderValue || 0}${unit}`);
         } else {
             onChange('auto');
+        }
+    };
+
+    // Commit logic for text input
+    const handleCommit = () => {
+        //If auto, ignore
+        if (isAuto) return;
+
+        // Parse internalValue
+        if (internalValue === '' || internalValue === '-') {
+            // maybe reset to 0? or just leave it?
+            // If empty, let's assume 0 for safety, or keep previous.
+            // actually, if we send "0px", that's fine.
+            onChange(`0${unit}`);
+            return;
+        }
+
+        const parsed = parseFloat(internalValue);
+        if (!isNaN(parsed)) {
+            onChange(`${parsed}${unit}`);
+        } else {
+            // reverting to prop value handled by useEffect when focus lost (if we trigger it)
+            // But we can just reload from props
+            setInternalValue(num);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleCommit();
+            e.currentTarget.blur();
         }
     };
 
@@ -167,19 +260,12 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                 <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors w-24">
                     <input
                         type="text"
-                        value={isAuto ? (placeholderValue || '') : num}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            // Allow empty or minus sign for typing
-                            if (val === '' || val === '-') {
-                                onChange(`${val}${unit}`);
-                                return;
-                            }
-                            const parsed = parseFloat(val);
-                            if (!isNaN(parsed)) {
-                                onChange(`${val}${unit}`);
-                            }
-                        }}
+                        value={internalValue}
+                        onChange={(e) => setInternalValue(e.target.value)}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => { setIsFocused(false); handleCommit(); }}
+                        onKeyDown={handleKeyDown}
+                        disabled={isAuto}
                         className={`w-full text-xs font-mono font-bold border-none p-0 text-right outline-none focus:ring-0 appearance-none bg-transparent ${isAuto ? 'text-slate-500' : 'text-slate-200'}`}
                     />
                     {!isAuto && !unitless && (
@@ -219,10 +305,10 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                         type="range"
                         min={currentMin}
                         max={currentMax}
-                        step={step || (unit === 'rem' ? 0.1 : 1)}
+                        step={currentStep}
                         value={num === '' ? 0 : num}
                         disabled={isDisabled}
-                        onChange={(e) => handleChange(e.target.value)}
+                        onChange={(e) => handleSliderChange(e.target.value)}
                         className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-blue-500 ${isDisabled ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
                     />
                 </div>

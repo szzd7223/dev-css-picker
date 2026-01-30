@@ -24,8 +24,8 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                 backgroundColor: selectedElement.colors.background,
                 backgroundImage: selectedElement.colors.backgroundImage || 'none',
                 borderColor: selectedElement.colors.border || 'transparent',
-                borderWidth: cleanStyleValue(selectedElement.boxModel.borderWidth),
-                borderStyle: selectedElement.boxModel.borderStyle || 'none',
+                borderWidth: selectedElement.inlineStyle?.borderWidth || cleanStyleValue(selectedElement.boxModel.borderWidth),
+                borderStyle: selectedElement.inlineStyle?.borderStyle || selectedElement.boxModel.borderStyle || 'none',
             };
 
             const originalState = {
@@ -132,6 +132,8 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                             originalValue={originalStyles.borderWidth}
                             onReset={() => handleReset('borderWidth')}
                             min={0} max={20}
+                            forceInteger={true}
+                            hideUnitSelector={true}
                         />
                         <SelectInput
                             label="Style"
