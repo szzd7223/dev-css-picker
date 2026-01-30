@@ -36,9 +36,16 @@ export default function InspectorTab() {
             color: el.colors?.text,
             fontSize: el.typography?.size,
             fontWeight: el.typography?.weight,
+            textAlign: el.typography?.textAlign,
+            lineHeight: el.typography?.lineHeight,
+            letterSpacing: el.typography?.letterSpacing,
+            textTransform: el.typography?.textTransform,
+            textDecoration: el.typography?.decoration, // Note: el.typography might key it as 'textDecorationLine' or similar, check usage if needed, but assuming 'decoration' based on context or 'textDecoration'
 
             // Background
             backgroundColor: el.colors?.background,
+            opacity: el.effects?.opacity || el.opacity, // Handling potential location in effects or root
+            mixBlendMode: el.effects?.mixBlendMode,
 
             // Box Model
             padding: el.boxModel?.padding,
@@ -46,6 +53,8 @@ export default function InspectorTab() {
             borderRadius: el.boxModel?.borderRadius,
             borderWidth: el.boxModel?.borderWidth,
             borderColor: el.colors?.border,
+            borderStyle: el.boxModel?.borderStyle, // Needed for dashed/dotted
+            boxShadow: el.effects?.boxShadow,
 
             // Positioning
             position: el.positioning?.position,
@@ -54,6 +63,8 @@ export default function InspectorTab() {
             bottom: el.positioning?.bottom,
             left: el.positioning?.left,
             zIndex: el.positioning?.zIndex,
+            transform: el.positioning?.transform || el.transform,
+            cursor: el.interaction?.cursor,
 
             // Flex/Grid comes from its own object, pass it as is or flat? 
             // Generator expects `styles.flexGrid` object for advanced props.

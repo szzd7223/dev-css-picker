@@ -116,6 +116,23 @@ export function generateTailwindClasses(styles) {
     const weightMap = { '100': 'font-thin', '200': 'font-extralight', '300': 'font-light', '400': 'font-normal', '500': 'font-medium', '600': 'font-semibold', '700': 'font-bold', '800': 'font-extrabold', '900': 'font-black' };
     if (styles.fontWeight && weightMap[styles.fontWeight]) classes.push(weightMap[styles.fontWeight]);
 
+    // Typography Extras
+    if (styles.textAlign) {
+        const alignMap = { 'left': 'text-left', 'center': 'text-center', 'right': 'text-right', 'justify': 'text-justify' };
+        if (alignMap[styles.textAlign]) classes.push(alignMap[styles.textAlign]);
+    }
+    if (styles.textTransform) {
+        const transformMap = { 'uppercase': 'uppercase', 'lowercase': 'lowercase', 'capitalize': 'capitalize' };
+        if (transformMap[styles.textTransform]) classes.push(transformMap[styles.textTransform]);
+    }
+    if (styles.textDecoration && styles.textDecoration !== 'none') {
+        const decMap = { 'underline': 'underline', 'line-through': 'line-through', 'no-underline': 'no-underline', 'overline': 'overline' };
+        if (decMap[styles.textDecoration] || styles.textDecoration.includes(' ')) classes.push(decMap[styles.textDecoration] || `decoration-[${styles.textDecoration}]`);
+    }
+    if (styles.lineHeight && styles.lineHeight !== 'normal') classes.push(`leading-[${styles.lineHeight}]`);
+    if (styles.letterSpacing && styles.letterSpacing !== 'normal') classes.push(`tracking-[${styles.letterSpacing}]`);
+
+
     // Spacing
     const handleSpacing = (prop, prefix) => {
         const val = styles[prop];
@@ -147,8 +164,25 @@ export function generateTailwindClasses(styles) {
     handleSpacing('padding', 'p');
     handleSpacing('margin', 'm');
 
-    // Background
+    // Background & Effects
     if (styles.backgroundColor && styles.backgroundColor !== 'transparent') classes.push(getTwColor(styles.backgroundColor, 'bg'));
+
+    if (styles.opacity && String(styles.opacity) !== '1') {
+        const opVal = parseFloat(styles.opacity);
+        // Map to step if close, else arbitrary
+        const step = Math.round(opVal * 100);
+        if (step % 5 === 0) classes.push(`opacity-${step}`);
+        else classes.push(`opacity-[${opVal}]`);
+    }
+
+    if (styles.boxShadow && styles.boxShadow !== 'none') {
+        // Simple heuristic for common shadows could go here, for now arbitrary to ensure exactness
+        classes.push(`shadow-[${styles.boxShadow.replace(/\s+/g, '_')}]`);
+    }
+
+    if (styles.mixBlendMode && styles.mixBlendMode !== 'normal') {
+        classes.push(`mix-blend-${styles.mixBlendMode}`);
+    }
 
     // Border
     if (styles.borderRadius) {
@@ -185,6 +219,9 @@ export function generateTailwindClasses(styles) {
     }
     if (styles.borderWidth && styles.borderWidth !== '0px') classes.push(`border-[${styles.borderWidth}]`);
     if (styles.borderColor) classes.push(getTwColor(styles.borderColor, 'border'));
+    if (styles.borderStyle && styles.borderStyle !== 'solid' && styles.borderStyle !== 'none') {
+        classes.push(`border-${styles.borderStyle}`);
+    }
 
     // Positioning
     if (styles.position && styles.position !== 'static') {
@@ -202,6 +239,16 @@ export function generateTailwindClasses(styles) {
     }
     if (styles.zIndex && styles.zIndex !== 'auto') classes.push(`z-[${styles.zIndex}]`);
 
+    // Transforms & Interactivity
+    if (styles.transform && styles.transform !== 'none') {
+        // Tailwind has explicit transform utility but purely arbitrary transform works best for complex matrix strings
+        // If it's simple like "rotate(45deg)", we could parse, but "transform-[...]" is safest for exact match
+        classes.push(`[transform:${styles.transform.replace(/\s+/g, '_')}]`);
+    }
+    if (styles.cursor && styles.cursor !== 'auto' && styles.cursor !== 'default') {
+        classes.push(`cursor-${styles.cursor}`);
+    }
+
     return classes.join(' ');
 }
 
@@ -217,6 +264,21 @@ export function generateCSS(styles, tagName = 'element') {
     if (styles.backgroundColor && styles.backgroundColor !== 'transparent') {
         cssLines.push(`  background-color: ${styles.backgroundColor};`);
     }
+
+    // Effects & Visuals
+    if (styles.opacity && String(styles.opacity) !== '1') cssLines.push(`  opacity: ${styles.opacity};`);
+    if (styles.boxShadow && styles.boxShadow !== 'none') cssLines.push(`  box-shadow: ${styles.boxShadow};`);
+    if (styles.mixBlendMode && styles.mixBlendMode !== 'normal') cssLines.push(`  mix-blend-mode: ${styles.mixBlendMode};`);
+
+    // Border
+    if (styles.borderWidth && styles.borderWidth !== '0px') cssLines.push(`  border-width: ${styles.borderWidth};`);
+    if (styles.borderColor) cssLines.push(`  border-color: ${styles.borderColor};`);
+    if (styles.borderStyle && styles.borderStyle !== 'solid' && styles.borderStyle !== 'none') cssLines.push(`  border-style: ${styles.borderStyle};`);
+
+    // Transforms & Interactivity
+    if (styles.transform && styles.transform !== 'none') cssLines.push(`  transform: ${styles.transform};`);
+    if (styles.cursor && styles.cursor !== 'auto') cssLines.push(`  cursor: ${styles.cursor};`);
+
 
     // Positioning
     if (styles.position && styles.position !== 'static') {
@@ -252,6 +314,11 @@ export function generateCSS(styles, tagName = 'element') {
     // Typography
     if (styles.fontSize) cssLines.push(`  font-size: ${styles.fontSize};`);
     if (styles.fontWeight) cssLines.push(`  font-weight: ${styles.fontWeight};`);
+    if (styles.textAlign && styles.textAlign !== 'start') cssLines.push(`  text-align: ${styles.textAlign};`);
+    if (styles.lineHeight && styles.lineHeight !== 'normal') cssLines.push(`  line-height: ${styles.lineHeight};`);
+    if (styles.letterSpacing && styles.letterSpacing !== 'normal') cssLines.push(`  letter-spacing: ${styles.letterSpacing};`);
+    if (styles.textTransform && styles.textTransform !== 'none') cssLines.push(`  text-transform: ${styles.textTransform};`);
+    if (styles.textDecoration && !styles.textDecoration.includes('none')) cssLines.push(`  text-decoration: ${styles.textDecoration};`);
 
     // Flex/Grid
     if (styles.display === 'flex') {
