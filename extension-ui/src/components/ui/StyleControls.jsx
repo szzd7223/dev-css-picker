@@ -457,6 +457,10 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
         { label: 'SM', val: '0.125rem', match: ['2px', '0.125rem'] },
         { label: 'MD', val: '0.375rem', match: ['6px', '0.375rem'] },
         { label: 'LG', val: '0.5rem', match: ['8px', '0.5rem'] },
+        { label: 'XL', val: '0.75rem', match: ['12px', '0.75rem'] },
+        { label: '2XL', val: '1rem', match: ['16px', '1rem'] },
+        { label: '3XL', val: '1.5rem', match: ['24px', '1.5rem'] },
+        { label: '4XL', val: '2rem', match: ['32px', '2rem'] },
         { label: 'Full', val: '9999px', match: ['9999px', '50%'] },
     ];
 
@@ -498,12 +502,12 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
             </div>
 
             {/* Presets Row */}
-            <div className="flex items-center gap-1 mb-2 bg-slate-900/50 p-1 rounded-md border border-slate-800/50">
+            <div className="flex flex-wrap items-center gap-1 mb-2 bg-slate-900/50 p-1 rounded-md border border-slate-800/50">
                 {PRESETS.map((preset) => (
                     <button
                         key={preset.label}
                         onClick={() => setPreset(preset.val)}
-                        className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all border ${isCurrentPreset(preset.match) && !isFineTune
+                        className={`flex-1 min-w-[36px] py-1.5 text-[10px] font-bold rounded transition-all border ${isCurrentPreset(preset.match) && !isFineTune
                             ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
                             : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                             }`}
