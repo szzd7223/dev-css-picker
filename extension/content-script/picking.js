@@ -36,10 +36,23 @@
         }
     }
 
+    let cursorStyle = null;
+
     function startPicking() {
         if (!isPicking) {
             isPicking = true;
             createOverlay();
+
+            // Force crosshair cursor on all elements
+            cursorStyle = document.createElement('style');
+            cursorStyle.id = 'css-picker-cursor-style';
+            cursorStyle.textContent = `
+                * {
+                    cursor: crosshair !important;
+                }
+            `;
+            document.head.appendChild(cursorStyle);
+
             document.addEventListener('mousemove', handleMouseMove, { passive: true });
             document.addEventListener('click', handleClick, { capture: true });
         }
@@ -49,6 +62,12 @@
         if (isPicking) {
             isPicking = false;
             removeOverlay();
+
+            if (cursorStyle) {
+                cursorStyle.remove();
+                cursorStyle = null;
+            }
+
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('click', handleClick, { capture: true });
             lastElement = null;

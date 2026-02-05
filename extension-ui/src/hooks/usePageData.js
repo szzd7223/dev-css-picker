@@ -56,7 +56,16 @@ export function usePageData() {
                             console.log("Injecting content script...");
                             chrome.scripting.executeScript({
                                 target: { tabId: activeTab.id },
-                                files: ['content.js']
+                                files: [
+                                    'content-script/tracker.js',
+                                    'content-script/messaging.js',
+                                    'content-script/utils.js',
+                                    'content-script/inspector.js',
+                                    'content-script/overlay.js',
+                                    'content-script/picking.js',
+                                    'content-script/scanner.js',
+                                    'content-script/init.js'
+                                ]
                             }, () => {
                                 if (chrome.runtime.lastError) {
                                     setData(prev => ({ ...prev, loading: false, error: "Failed to inject script." }));
