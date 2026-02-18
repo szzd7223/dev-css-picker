@@ -5,7 +5,6 @@ import AssetsTab from './components/tabs/AssetsTab'
 import ColorsTab from './components/tabs/ColorsTab'
 import LayoutTab from './components/tabs/LayoutTab'
 import InspectorTab from './components/tabs/InspectorTab'
-import ProfileTab from './components/tabs/ProfileTab'
 import { useDevToolsStore } from './store/devtools'
 
 function App() {
@@ -161,7 +160,6 @@ function App() {
       {activeTab === 'colors' && <ColorsTab selectedElement={selectedElement} onUpdateElement={(updates) => {
         Object.entries(updates).forEach(([k, v]) => updateProperty(k, v));
       }} />}
-      {activeTab === 'profile' && <ProfileTab />}
     </SidebarLayout >
   )
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGrid, Image, FileCode, Palette, ScanEye, User, Smartphone, Tablet, Monitor, Maximize, Box } from 'lucide-react';
+import { LayoutGrid, Image, FileCode, Palette, ScanEye, Smartphone, Tablet, Monitor, Maximize, Box } from 'lucide-react';
 
 const TABS = [
     { id: 'overview', icon: LayoutGrid, label: 'Overview' },
@@ -7,7 +7,6 @@ const TABS = [
     { id: 'layout', icon: Box, label: 'Layout' },
     { id: 'colors', icon: Palette, label: 'Colors' },
     { id: 'assets', icon: Image, label: 'Assets' },
-    { id: 'profile', icon: User, label: 'Profile' },
 ];
 
 export default function SidebarLayout({ activeTab, onTabChange, isInspectMode, onToggleInspect, onViewportChange, children }) {
