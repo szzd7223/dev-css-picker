@@ -1,4 +1,4 @@
-# CSS Picker Extension
+# Picky_Editor Extension
 
 A minimal Chrome Extension to pick and view CSS elements.
 
@@ -17,7 +17,7 @@ A minimal Chrome Extension to pick and view CSS elements.
    1. Open Chrome and navigate to `chrome://extensions/`.
    2. Enable **Developer mode** (toggle in the top right).
    3. Click **Load unpacked**.
-   4. Select the directory containing these files (`dev-css-picker`).
+   4. Select the directory containing these files (`Picky_Editor`).
 
 ## Usage
 

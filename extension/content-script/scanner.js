@@ -1,8 +1,8 @@
 // extension/content-script/scanner.js
 
 (function () {
-    const { getOrAssignId, normalizeColor } = window.CSSPicker.utils;
-    const { getAssetInfo } = window.CSSPicker.inspector;
+    const { getOrAssignId, normalizeColor } = window.Picky_Editor.utils;
+    const { getAssetInfo } = window.Picky_Editor.inspector;
 
     // Scan page logic for Overview Tab
     async function extractOverviewData() {
@@ -33,7 +33,7 @@
 
 
 
-    window.CSSPicker.scanner = {
+    window.Picky_Editor.scanner = {
         extractOverviewData,
 
     };

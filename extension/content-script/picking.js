@@ -1,8 +1,8 @@
 // extension/content-script/picking.js
 
 (function () {
-    const { createOverlay, removeOverlay, updateHighlight, hasOverlay } = window.CSSPicker.overlay;
-    const { getElementInfo } = window.CSSPicker.inspector;
+    const { createOverlay, removeOverlay, updateHighlight, hasOverlay } = window.Picky_Editor.overlay;
+    const { getElementInfo } = window.Picky_Editor.inspector;
 
     let isPicking = false;
     let lastElement = null;
@@ -82,7 +82,7 @@
         lastElement = el;
     }
 
-    window.CSSPicker.picking = {
+    window.Picky_Editor.picking = {
         startPicking,
         stopPicking,
         getLastElement,

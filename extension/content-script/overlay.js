@@ -18,25 +18,25 @@
         style.textContent = `
             .highlight-box { 
                 position: fixed; 
-                border: 1px solid #3b82f6; 
-                background: rgba(59, 130, 246, 0.08); 
+                border: 1px solid #2ECC71; 
+                background: rgba(46, 204, 113, 0.08); 
                 pointer-events: none; 
                 z-index: 10000; 
                 box-sizing: border-box; 
                 transition: all 0.05s ease-out; 
-                box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1);
+                box-shadow: inset 0 0 0 1px rgba(46, 204, 113, 0.1);
             }
             .highlight-tag { 
                 position: absolute; 
                 bottom: 100%;
                 left: 0;
-                background: #3b82f6; 
-                color: white; 
+                background: #2ECC71; 
+                color: #050705; 
                 padding: 1px 10px; 
                 border-radius: 4px 4px 0 0; 
                 font-size: 10px; 
                 font-weight: 600; 
-                font-family: ui-sans-serif, system-ui, sans-serif;
+                font-family: 'JetBrains Mono', 'Fira Code', monospace;
                 white-space: nowrap;
                 display: flex;
                 align-items: center;
@@ -117,7 +117,7 @@
 
 
 
-    window.CSSPicker.overlay = {
+    window.Picky_Editor.overlay = {
         createOverlay,
         removeOverlay,
         updateHighlight,

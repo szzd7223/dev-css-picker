@@ -145,20 +145,20 @@ export default function InspectorTab() {
         const isRestricted = pageError === "RESTRICTED_PAGE";
         return (
             <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
-                <div className={`w-12 h-12 ${isRestricted ? 'bg-amber-500/10' : 'bg-red-500/10'} rounded-full flex items-center justify-center mb-4`}>
-                    <Box className={isRestricted ? 'text-amber-500' : 'text-red-500'} size={24} />
+                <div className={`w-12 h-12 ${isRestricted ? 'bg-primary/10' : 'bg-destructive/10'} rounded-full flex items-center justify-center mb-4`}>
+                    <Box className={isRestricted ? 'text-primary' : 'text-destructive'} size={24} />
                 </div>
                 <h3 className="text-white font-bold mb-2">
                     {isRestricted ? "Restricted Page" : "Error"}
                 </h3>
-                <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
+                <p className="text-dim-text text-sm mb-6 max-w-[200px]">
                     {isRestricted
-                        ? "For security reasons, CSS Picker cannot be used on internal browser pages or the Web Store."
+                        ? "For security reasons, Picky_Editor cannot be used on internal browser pages or the Web Store."
                         : pageError
                     }
                 </p>
                 {!isRestricted && (
-                    <button onClick={() => chrome.tabs.reload()} className="text-blue-400 hover:text-blue-300">Refresh Page</button>
+                    <button onClick={() => chrome.tabs.reload()} className="text-primary hover:text-primary-hover font-bold">Refresh Page</button>
                 )}
             </div>
         )
@@ -167,25 +167,25 @@ export default function InspectorTab() {
     if (!selectedElement) {
         return (
             <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
-                <div className={`w-16 h-16 ${isInspectMode ? 'bg-slate-800' : 'bg-slate-800/50'} text-blue-500 rounded-full flex items-center justify-center mb-4`}>
+                <div className={`w-16 h-16 ${isInspectMode ? 'bg-surface' : 'bg-surface/50'} text-primary rounded-full flex items-center justify-center mb-4`}>
                     <Box size={32} strokeWidth={1.5} className={isInspectMode ? 'animate-pulse' : 'opacity-40'} />
                 </div>
                 {isInspectMode ? (
                     <>
                         <h2 className="text-lg font-bold text-white mb-2">Inspector Mode Active</h2>
-                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                        <p className="text-dim-text text-sm max-w-[200px] mb-6">
                             Hover over elements on the page to see details. Click to lock selection.
                         </p>
                     </>
                 ) : (
                     <>
                         <h2 className="text-lg font-bold text-white mb-2">Ready to Inspect</h2>
-                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                        <p className="text-dim-text text-sm max-w-[200px] mb-6">
                             Enable inspect mode to select an element and start editing styles.
                         </p>
                         <button
                             onClick={() => setInspectMode(true)}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                            className="bg-primary hover:bg-primary-hover text-bg px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/20"
                         >
                             Enable Inspect Mode
                         </button>
@@ -200,12 +200,12 @@ export default function InspectorTab() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => setActiveTab('overview')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+                    <button onClick={() => setActiveTab('overview')} className="p-2 hover:bg-surface rounded-lg text-dim-text transition-colors">
                         <ArrowLeft size={18} />
                     </button>
                     <h1 className="text-xl font-bold text-white">Inspect Element</h1>
                 </div>
-                <div className="p-2 bg-slate-800 rounded-full text-blue-400">
+                <div className="p-2 bg-surface rounded-full text-primary">
                     <RefreshCw size={14} className="cursor-pointer hover:rotate-180 transition-transform duration-500" onClick={() => handleSelectNode(selectedElement.cpId)} />
                 </div>
             </div>
@@ -214,9 +214,9 @@ export default function InspectorTab() {
             <section>
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-white">DOM Hierarchy</h3>
-                    <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">Shallow View</span>
+                    <span className="text-[10px] bg-surface text-dim-text px-2 py-1 rounded border border-slate-700">Shallow View</span>
                 </div>
-                <div className="bg-slate-900 border border-slate-800 p-2 rounded-xl">
+                <div className="bg-bg border border-slate-800 p-2 rounded-xl">
                     <DomTree hierarchy={selectedElement.hierarchy} onSelectNode={handleSelectNode} />
                 </div>
             </section>
@@ -224,10 +224,10 @@ export default function InspectorTab() {
             {/* SECTIONS */}
             <div className="space-y-6">
                 {/* TYPOGRAPHY */}
-                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div className="bg-surface rounded-xl border border-slate-700 overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                        <Type size={16} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-200">Typography</span>
+                        <Type size={16} className="text-dim-text" />
+                        <span className="text-sm font-bold text-primary-text">Typography</span>
                     </div>
                     <div className="p-4 space-y-4">
                         <SliderInput
@@ -256,25 +256,25 @@ export default function InspectorTab() {
             </div>
 
             {/* GENERATED CODE */}
-            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden mt-4">
+            <div className="bg-bg rounded-xl border border-slate-800 overflow-hidden mt-4">
                 <div className="flex border-b border-slate-800">
                     <button
                         onClick={() => setCodeTab('tailwind')}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors ${codeTab === 'tailwind' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors ${codeTab === 'tailwind' ? 'text-bg border-b-2 border-primary bg-primary' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         Tailwind
                     </button>
                     <button
                         onClick={() => setCodeTab('css')}
-                        className={`flex-1 py-2 text-xs font-bold transition-colors ${codeTab === 'css' ? 'text-blue-400 border-b-2 border-blue-500 bg-slate-800/30' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`flex-1 py-2 text-xs font-bold transition-colors ${codeTab === 'css' ? 'text-bg border-b-2 border-primary bg-primary' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         CSS
                     </button>
-                    <button onClick={copyToClipboard} className="px-3 border-l border-slate-800 text-slate-400 hover:text-white flex items-center gap-1.5 min-w-[70px] justify-center">
+                    <button onClick={copyToClipboard} className="px-3 border-l border-slate-800 text-dim-text hover:text-white flex items-center gap-1.5 min-w-[70px] justify-center">
                         {isCopied ? (
                             <>
-                                <Check size={12} className="text-green-500" />
-                                <span className="text-[10px] text-green-500 uppercase font-bold">Copied</span>
+                                <Check size={12} className="text-primary" />
+                                <span className="text-[10px] text-primary uppercase font-bold">Copied</span>
                             </>
                         ) : (
                             <>
@@ -292,7 +292,7 @@ export default function InspectorTab() {
                                 : generatedCss
                             }
                             readOnly={true}
-                            className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-blue-300 resize-none focus:outline-none"
+                            className="w-full h-32 bg-bg border border-slate-800 rounded-lg p-3 text-xs font-mono text-primary/80 resize-none focus:outline-none"
                         />
                     </div>
                 </div>

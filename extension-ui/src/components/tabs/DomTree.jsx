@@ -41,10 +41,10 @@ export default function DomTree({ hierarchy, onSelectNode }) {
                         className={`
                                 relative flex items-center p-2 rounded-lg transition-all cursor-pointer group border
                                 ${isTarget
-                                ? 'bg-slate-800 border-slate-700 shadow-md z-10'
+                                ? 'bg-surface border-slate-700 shadow-md z-10'
                                 : isChild
-                                    ? 'bg-slate-800/30 border-dashed border-slate-700/50 hover:border-slate-600'
-                                    : 'bg-transparent border-transparent hover:bg-slate-800/50'
+                                    ? 'bg-surface/30 border-dashed border-slate-700/50 hover:border-slate-600'
+                                    : 'bg-transparent border-transparent hover:bg-surface/50'
                             }
                             `}
                         style={{ marginLeft: `${node.indent}px` }}
@@ -52,19 +52,19 @@ export default function DomTree({ hierarchy, onSelectNode }) {
                         {/* Tag Icon */}
                         <div className={`
                                 w-6 h-6 rounded flex items-center justify-center mr-2 shrink-0
-                                ${isTarget ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500 group-hover:text-slate-400'}
+                                ${isTarget ? 'bg-primary-muted text-primary' : 'bg-surface text-slate-500 group-hover:text-slate-400'}
                             `}>
                             <Code size={12} />
                         </div>
 
                         <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                            <span className={`font-mono text-xs font-bold ${isTarget ? 'text-blue-400' : 'text-purple-400'}`}>
+                            <span className={`font-mono text-xs font-bold ${isTarget ? 'text-primary' : 'text-primary/70'}`}>
                                 &lt;{node.tagName}&gt;
                             </span>
 
                             {(node.id || node.classes) && (
-                                <div className="text-[10px] truncate font-mono text-slate-500">
-                                    {node.id && <span className="mr-1 text-yellow-500/80">#{node.id}</span>}
+                                <div className="text-[10px] truncate font-mono text-dim-text">
+                                    {node.id && <span className="mr-1 text-primary">#{node.id}</span>}
                                     {node.classes && <span>.{node.classes.replace(/\s+/g, '.')}</span>}
                                 </div>
                             )}

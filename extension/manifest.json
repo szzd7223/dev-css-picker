@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "CSS Picker",
+    "name": "Picky_Editor",
     "version": "1.0",
     "description": "A minimal Chrome Extension to pick and view CSS elements.",
     "permissions": [
@@ -13,7 +13,7 @@
         "<all_urls>"
     ],
     "action": {
-        "default_title": "Open CSS Picker"
+        "default_title": "Open Picky_Editor"
     },
     "side_panel": {
         "default_path": "sidebar/index.html"

@@ -1,7 +1,7 @@
 // extension/content-script/inspector.js
 
 (function () {
-    const { getOrAssignId, normalizeColor } = window.CSSPicker.utils;
+    const { getOrAssignId, normalizeColor } = window.Picky_Editor.utils;
 
     // Image Discovery Logic
     function getImageUrl(el) {
@@ -192,12 +192,12 @@
             },
             hierarchy: getShallowHierarchy(el),
             // Access tracker from global scope, assuming init.js has run or will run
-            // Note: init.js runs AFTER this file, but window.CSSPicker.tracker will be available when getElementInfo is CALLED because it's called on user interaction or messaging, which happens after all scripts load.
-            originalStyles: window.CSSPicker.tracker ? window.CSSPicker.tracker.getAllOriginals(el) : {}
+            // Note: init.js runs AFTER this file, but window.Picky_Editor.tracker will be available when getElementInfo is CALLED because it's called on user interaction or messaging, which happens after all scripts load.
+            originalStyles: window.Picky_Editor.tracker ? window.Picky_Editor.tracker.getAllOriginals(el) : {}
         };
     }
 
-    window.CSSPicker.inspector = {
+    window.Picky_Editor.inspector = {
         getElementInfo,
         getAssetInfo
     };

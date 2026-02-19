@@ -232,25 +232,25 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
     if (!selectedElement) {
         return (
             <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
-                <div className={`w-16 h-16 ${isInspectMode ? 'bg-slate-800' : 'bg-slate-800/50'} text-blue-500 rounded-full flex items-center justify-center mb-4`}>
+                <div className={`w-16 h-16 ${isInspectMode ? 'bg-surface' : 'bg-surface/50'} text-primary rounded-full flex items-center justify-center mb-4`}>
                     <Layout size={32} strokeWidth={1.5} className={isInspectMode ? 'animate-pulse' : 'opacity-40'} />
                 </div>
                 {isInspectMode ? (
                     <>
                         <h2 className="text-lg font-bold text-white mb-2">Inspector Mode Active</h2>
-                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                        <p className="text-dim-text text-sm max-w-[200px] mb-6">
                             Hover over elements on the page to see details. Click to lock selection.
                         </p>
                     </>
                 ) : (
                     <>
                         <h2 className="text-lg font-bold text-white mb-2">Setup Layout</h2>
-                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                        <p className="text-dim-text text-sm max-w-[200px] mb-6">
                             Enable inspect mode to select an element and start adjusting its layout and position.
                         </p>
                         <button
                             onClick={() => setInspectMode(true)}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                            className="bg-primary hover:bg-primary-hover text-bg px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/20"
                         >
                             Enable Inspect Mode
                         </button>
@@ -264,13 +264,13 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
         <div className="p-4 space-y-6 animate-fade-in pb-24">
             {/* Header */}
             <div className="flex items-center gap-3 mb-2">
-                <Layout size={18} className="text-blue-400" />
+                <Layout size={18} className="text-primary" />
                 <h2 className="text-lg font-bold text-white">Layout & Positioning</h2>
             </div>
 
             {/* DISPLAY & DIMENSIONS */}
-            <section className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <section className="bg-surface rounded-xl border border-border-subtle p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2 text-dim-text text-xs font-bold uppercase tracking-wider">
                     <Maximize2 size={12} /> Dimensions & Display
                 </div>
                 <SelectInput
@@ -293,8 +293,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
             </section>
 
             {/* POSITIONING */}
-            <section className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <section className="bg-surface rounded-xl border border-border-subtle p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2 text-dim-text text-xs font-bold uppercase tracking-wider">
                     <Move size={12} /> Positioning
                 </div>
                 <SelectInput
@@ -321,8 +321,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
 
             {/* FLEX/GRID CONTROLS */}
             {(localStyles.display === 'flex' || localStyles.display === 'grid') && (
-                <section className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                <section className="bg-surface rounded-xl border border-border-subtle p-4 space-y-4">
+                    <div className="flex items-center gap-2 mb-2 text-dim-text text-xs font-bold uppercase tracking-wider">
                         {localStyles.display === 'grid' ? <Grid size={12} /> : <Layers size={12} />}
                         {localStyles.display === 'grid' ? 'Grid Container' : 'Flex Container'}
                     </div>
@@ -336,7 +336,7 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
                                 {localStyles.flexGrid?.rowGap !== localStyles.flexGrid?.columnGap && (
                                     <button
                                         onClick={handleSyncGaps}
-                                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface hover:bg-slate-700 text-[10px] text-primary transition-colors border border-slate-600 hover:border-primary/50"
                                         title="Sync Row and Column gaps"
                                     >
                                         <Equal size={10} />
@@ -444,8 +444,8 @@ export default function LayoutTab({ selectedElement, onUpdateElement }) {
             )}
 
             {/* BOX MODEL */}
-            <section className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <section className="bg-surface rounded-xl border border-border-subtle p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2 text-dim-text text-xs font-bold uppercase tracking-wider">
                     <Box size={12} /> Box Model
                 </div>
                 <SpacingInput

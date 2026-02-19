@@ -1,6 +1,6 @@
-if (!window.CSSPicker) window.CSSPicker = {};
+if (!window.Picky_Editor) window.Picky_Editor = {};
 
-window.CSSPicker.ElementChangeTracker = class ElementChangeTracker {
+window.Picky_Editor.ElementChangeTracker = class ElementChangeTracker {
     constructor() {
         this.changes = new WeakMap(); // store original values: element -> { prop: originalValue }
     }

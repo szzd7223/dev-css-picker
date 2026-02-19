@@ -1,19 +1,19 @@
 // extension/content-script/init.js
 
 (function () {
-    console.log('CSS Picker: Content script modules loaded.');
+    console.log('Picky_Editor: Content script modules loaded.');
 
-    const { startPicking, stopPicking, setLastElement } = window.CSSPicker.picking;
-    const { extractOverviewData } = window.CSSPicker.scanner;
-    const { getElementInfo } = window.CSSPicker.inspector;
-    const { createOverlay, updateHighlight, updateCellHighlight, clearCellHighlight } = window.CSSPicker.overlay;
+    const { startPicking, stopPicking, setLastElement } = window.Picky_Editor.picking;
+    const { extractOverviewData } = window.Picky_Editor.scanner;
+    const { getElementInfo } = window.Picky_Editor.inspector;
+    const { createOverlay, updateHighlight, updateCellHighlight, clearCellHighlight } = window.Picky_Editor.overlay;
 
     // Initialize Tracker
     // Ensure tracker.js is loaded before this file
-    if (window.CSSPicker.ElementChangeTracker) {
-        window.CSSPicker.tracker = new window.CSSPicker.ElementChangeTracker();
+    if (window.Picky_Editor.ElementChangeTracker) {
+        window.Picky_Editor.tracker = new window.Picky_Editor.ElementChangeTracker();
     } else {
-        console.error('CSS Picker: ElementChangeTracker not found. Make sure tracker.js is loaded first.');
+        console.error('Picky_Editor: ElementChangeTracker not found. Make sure tracker.js is loaded first.');
     }
 
     // Handlers Interface
@@ -67,10 +67,10 @@
     };
 
     // Initialize Messaging
-    if (window.CSSPicker.setupMessageListeners) {
-        window.CSSPicker.setupMessageListeners(window.CSSPicker.tracker, handlers);
+    if (window.Picky_Editor.setupMessageListeners) {
+        window.Picky_Editor.setupMessageListeners(window.Picky_Editor.tracker, handlers);
     } else {
-        console.error('CSS Picker: setupMessageListeners not found. Make sure messaging.js is loaded first.');
+        console.error('Picky_Editor: setupMessageListeners not found. Make sure messaging.js is loaded first.');
     }
 
 })();

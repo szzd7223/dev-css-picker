@@ -60,25 +60,25 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
     if (!selectedElement) {
         return (
             <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-fade-in">
-                <div className={`w-16 h-16 ${isInspectMode ? 'bg-slate-800' : 'bg-slate-800/50'} text-blue-500 rounded-full flex items-center justify-center mb-4`}>
+                <div className={`w-16 h-16 ${isInspectMode ? 'bg-surface' : 'bg-surface/50'} text-primary rounded-full flex items-center justify-center mb-4`}>
                     <Palette size={32} strokeWidth={1.5} className={isInspectMode ? 'animate-pulse' : 'opacity-40'} />
                 </div>
                 {isInspectMode ? (
                     <>
                         <h2 className="text-lg font-bold text-white mb-2">Inspector Mode Active</h2>
-                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                        <p className="text-dim-text text-sm max-w-[200px] mb-6">
                             Hover over elements on the page to see details. Click to lock selection.
                         </p>
                     </>
                 ) : (
                     <>
                         <h2 className="text-lg font-bold text-white mb-2">Style Colors</h2>
-                        <p className="text-slate-400 text-sm max-w-[200px] mb-6">
+                        <p className="text-dim-text text-sm max-w-[200px] mb-6">
                             Enable inspect mode to select an element and start editing colors and backgrounds.
                         </p>
                         <button
                             onClick={() => setInspectMode(true)}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                            className="bg-primary hover:bg-primary-hover text-bg px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/20"
                         >
                             Enable Inspect Mode
                         </button>
@@ -92,13 +92,13 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
         <div className="p-4 space-y-6 animate-fade-in pb-24">
             {/* Header */}
             <div className="flex items-center gap-3 mb-2">
-                <Palette size={18} className="text-blue-400" />
+                <Palette size={18} className="text-primary" />
                 <h2 className="text-lg font-bold text-white">Colors & Backgrounds</h2>
             </div>
 
             {/* TEXT & BORDER */}
-            <section className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <section className="bg-surface rounded-xl border border-border-subtle p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2 text-dim-text text-xs font-bold uppercase tracking-wider">
                     <Droplet size={12} /> Basic Colors
                 </div>
                 <ColorInput
@@ -108,8 +108,8 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                     originalValue={originalStyles.color}
                     onReset={() => handleReset('color')}
                 />
-                <div className="pt-4 border-t border-slate-700">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Border</div>
+                <div className="pt-4 border-t border-border-subtle">
+                    <div className="text-[10px] font-bold text-dim-text uppercase tracking-wider mb-2">Border</div>
                     <div className="space-y-4">
                         <SliderInput
                             label="Width"
@@ -161,8 +161,8 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
             </section>
 
             {/* BACKGROUNDS */}
-            <section className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <section className="bg-surface rounded-xl border border-border-subtle p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2 text-dim-text text-xs font-bold uppercase tracking-wider">
                     <Layers size={12} /> Backgrounds
                 </div>
                 <ColorInput
@@ -180,7 +180,7 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                             <span className="text-xs font-bold text-slate-300">Gradient Overlay</span>
                             <button
                                 onClick={() => handleStyleChange('backgroundImage', 'none')}
-                                className="text-[10px] text-red-400 hover:text-red-300 font-medium"
+                                className="text-[10px] text-destructive hover:opacity-80 font-medium"
                             >
                                 Remove
                             </button>
@@ -247,8 +247,8 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                                     {/* Stops */}
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Stops</span>
-                                            <button onClick={addStop} className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded text-blue-300 transition-colors">+ Add</button>
+                                            <span className="text-[10px] font-bold text-dim-text uppercase">Stops</span>
+                                            <button onClick={addStop} className="text-[10px] bg-slate-700 hover:bg-slate-600 px-1.5 py-0.5 rounded text-primary transition-colors">+ Add</button>
                                         </div>
                                         {parsed.stops.map((stop, i) => (
                                             <div key={i} className="flex items-center gap-2">
@@ -267,7 +267,7 @@ export default function ColorsTab({ selectedElement, onUpdateElement }) {
                                                         value={stop.position || ''}
                                                         placeholder="%"
                                                         onChange={(e) => updateStop(i, 'position', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs font-mono text-slate-300 focus:border-blue-500 outline-none"
+                                                        className="w-full bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs font-mono text-slate-300 focus:border-primary outline-none"
                                                     />
                                                 </div>
                                                 <button

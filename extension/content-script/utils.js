@@ -1,7 +1,7 @@
 // extension/content-script/utils.js
 
 // Ensure namespace exists
-window.CSSPicker = window.CSSPicker || {};
+window.Picky_Editor = window.Picky_Editor || {};
 
 (function () {
     // Utility for picking elements
@@ -23,7 +23,7 @@ window.CSSPicker = window.CSSPicker || {};
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
     }
 
-    window.CSSPicker.utils = {
+    window.Picky_Editor.utils = {
         getOrAssignId,
         normalizeColor
     };

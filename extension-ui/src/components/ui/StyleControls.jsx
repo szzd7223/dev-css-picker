@@ -34,7 +34,7 @@ export const ColorInput = ({ label, value, onChange, originalValue, onReset }) =
                 {isChanged && (
                     <button
                         onClick={onReset}
-                        className="text-slate-600 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all p-0.5 rounded"
+                        className="text-slate-600 hover:text-primary opacity-0 group-hover:opacity-100 transition-all p-0.5 rounded"
                         title="Reset to original"
                     >
                         <RotateCcw size={10} />
@@ -53,7 +53,7 @@ export const ColorInput = ({ label, value, onChange, originalValue, onReset }) =
                         className="w-full h-full"
                         style={{
                             backgroundColor: value === 'transparent' ? 'transparent' : value,
-                            backgroundImage: value === 'transparent' ? 'conic-gradient(#334155 0.25turn, #1e293b 0.25turn 0.5turn, #334155 0.5turn 0.75turn, #1e293b 0.75turn)' : 'none',
+                            backgroundImage: value === 'transparent' ? 'conic-gradient(#0A0D0A 0.25turn, #050705 0.25turn 0.5turn, #0A0D0A 0.5turn 0.75turn, #050705 0.75turn)' : 'none',
                             backgroundSize: '8px 8px'
                         }}
                     />
@@ -65,12 +65,12 @@ export const ColorInput = ({ label, value, onChange, originalValue, onReset }) =
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => { setIsFocused(false); handleCommit(); }}
                     onKeyDown={handleKeyDown}
-                    className="w-24 text-xs font-mono border border-slate-700 bg-slate-950 rounded px-2 py-1 text-right text-slate-200 focus:border-blue-500 outline-none"
+                    className="w-24 text-xs font-mono border border-slate-700 bg-bg rounded px-2 py-1 text-right text-slate-200 focus:border-primary outline-none"
                     spellCheck={false}
                 />
                 <button
                     onClick={() => onChange(value === 'transparent' ? '#000000' : 'transparent')}
-                    className={`h-7 w-7 flex items-center justify-center rounded border transition-colors ${value === 'transparent' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'}`}
+                    className={`h-7 w-7 flex items-center justify-center rounded border transition-colors ${value === 'transparent' ? 'bg-primary border-primary text-bg' : 'bg-surface border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'}`}
                     title="Toggle Transparent"
                 >
                     <Ban size={14} />
@@ -232,7 +232,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                     {isChanged && (
                         <button
                             onClick={onReset}
-                            className="text-slate-600 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all p-0.5 rounded"
+                            className="text-slate-600 hover:text-primary opacity-0 group-hover:opacity-100 transition-all p-0.5 rounded"
                             title="Reset to original"
                         >
                             <RotateCcw size={10} />
@@ -247,17 +247,17 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                     {allowAuto && (
                         <button
                             onClick={toggleAuto}
-                            className={`text-[9px] px-2 py-1 rounded border transition-colors uppercase font-bold tracking-wider flex items-center gap-1 ${isAuto ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}
+                            className={`text-[9px] px-2 py-1 rounded border transition-colors uppercase font-bold tracking-wider flex items-center gap-1 ${isAuto ? 'bg-primary-muted border-primary/50 text-primary' : 'bg-surface border-slate-700 text-slate-500 hover:text-slate-300'}`}
                             title="Toggle Auto"
                         >
-                            <div className={`w-1.5 h-1.5 rounded-full ${isAuto ? 'bg-blue-400' : 'bg-slate-600'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-full ${isAuto ? 'bg-primary' : 'bg-slate-600'}`} />
                             Auto
                         </button>
                     )}
                 </div>
 
                 {/* Value Display & Unit Selector */}
-                <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors w-24">
+                <div className="flex items-center bg-bg border border-slate-800 rounded px-2 py-1 focus-within:border-primary/50 transition-colors w-24">
                     <input
                         type="text"
                         value={internalValue}
@@ -275,18 +275,18 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                             ) : (
                                 <button
                                     onClick={() => setShowUnits(!showUnits)}
-                                    className="text-[10px] text-slate-500 hover:text-blue-400 font-medium flex items-center hover:bg-slate-900 rounded px-1 -mr-1"
+                                    className="text-[10px] text-slate-500 hover:text-primary font-medium flex items-center hover:bg-surface rounded px-1 -mr-1"
                                 >
                                     {unit}
                                 </button>
                             )}
                             {showUnits && !hideUnitSelector && (
-                                <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col min-w-[50px]">
+                                <div className="absolute top-full right-0 mt-1 bg-surface border border-slate-700 rounded shadow-xl z-50 flex flex-col min-w-[50px]">
                                     {UNITS.map(u => (
                                         <button
                                             key={u}
                                             onClick={() => handleUnitChange(u)}
-                                            className={`text-[10px] px-2 py-1 text-left hover:bg-slate-700 ${u === unit ? 'text-blue-400 font-bold' : 'text-slate-400'}`}
+                                            className={`text-[10px] px-2 py-1 text-left hover:bg-slate-700 ${u === unit ? 'text-primary font-bold' : 'text-slate-400'}`}
                                         >
                                             {u}
                                         </button>
@@ -309,7 +309,7 @@ export const SliderInput = ({ label, value, onChange, min = 0, max = 1000, allow
                         value={num === '' ? 0 : num}
                         disabled={isDisabled}
                         onChange={(e) => handleSliderChange(e.target.value)}
-                        className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-blue-500 ${isDisabled ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
+                        className={`w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary ${isDisabled ? 'bg-surface opacity-50 cursor-not-allowed' : 'bg-slate-700'}`}
                     />
                 </div>
             )}
@@ -365,7 +365,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
     };
 
     return (
-        <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 mb-3">
+        <div className="bg-surface/50 rounded-lg p-2 border border-slate-700/50 mb-3">
             <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium text-slate-400 uppercase flex items-center gap-2">
                     {label}
@@ -376,7 +376,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                     {isChanged && (
                         <button
                             onClick={onReset}
-                            className="flex items-center justify-center p-1 rounded hover:bg-slate-700 text-slate-500 hover:text-blue-400 transition-colors mr-1"
+                            className="flex items-center justify-center p-1 rounded hover:bg-surface text-slate-500 hover:text-primary transition-colors mr-1"
                             title="Reset all sides"
                         >
                             <RotateCcw size={10} />
@@ -386,7 +386,7 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                     {areSidesDifferent && (
                         <button
                             onClick={() => handleAllChange(current.top)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] text-blue-300 transition-colors border border-slate-600 hover:border-blue-500/50"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface hover:bg-slate-700 text-[10px] text-primary transition-colors border border-slate-600 hover:border-primary/50"
                             title="Make all sides equal to Top value"
                         >
                             <Equal size={10} />
@@ -400,8 +400,8 @@ export const SpacingInput = ({ label, values, onChange, originalValues, onReset,
                         className={`p-1 rounded transition-colors ${areSidesDifferent
                             ? 'opacity-30 cursor-not-allowed text-slate-600'
                             : isExpanded
-                                ? 'bg-slate-700 text-blue-400'
-                                : 'hover:bg-slate-700 text-slate-500 hover:text-blue-400'
+                                ? 'bg-surface text-primary'
+                                : 'hover:bg-surface text-slate-500 hover:text-primary'
                             }`}
                         title={
                             areSidesDifferent
@@ -556,12 +556,12 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
     };
 
     return (
-        <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 mb-3">
+        <div className="bg-surface/50 rounded-lg p-2 border border-slate-700/50 mb-3">
             <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium text-slate-400 uppercase flex items-center gap-2">
                     {label}
                     {areCornersDifferent && (
-                        <span className="text-[9px] bg-slate-700 px-1.5 py-0.5 rounded text-blue-300 ml-1">Mixed</span>
+                        <span className="text-[9px] bg-surface px-1.5 py-0.5 rounded text-primary ml-1">Mixed</span>
                     )}
                 </label>
 
@@ -569,7 +569,7 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
                     {/* Toggle Fine Tune */}
                     <button
                         onClick={() => setIsFineTune(!isFineTune)}
-                        className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${isFineTune ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${isFineTune ? 'text-primary' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         {isFineTune ? 'Hide Controls' : 'Fine Tune'}
                     </button>
@@ -578,7 +578,7 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
                     {(JSON.stringify(current) !== JSON.stringify(original)) && (
                         <button
                             onClick={onReset}
-                            className="text-slate-600 hover:text-blue-400 transition-colors p-0.5"
+                            className="text-slate-600 hover:text-primary transition-colors p-0.5"
                             title="Reset to original"
                         >
                             <RotateCcw size={10} />
@@ -588,14 +588,14 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
             </div>
 
             {/* Presets Row */}
-            <div className="flex flex-wrap items-center gap-1 mb-2 bg-slate-900/50 p-1 rounded-md border border-slate-800/50">
+            <div className="flex flex-wrap items-center gap-1 mb-2 bg-bg/50 p-1 rounded-md border border-slate-800/50">
                 {PRESETS.map((preset) => (
                     <button
                         key={preset.label}
                         onClick={() => setPreset(preset.val)}
                         className={`flex-1 min-w-[36px] py-1.5 text-[10px] font-bold rounded transition-all border ${isCurrentPreset(preset.match) && !isFineTune
-                            ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
-                            : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                            ? 'bg-primary border-primary text-bg shadow-sm'
+                            : 'bg-transparent border-transparent text-slate-400 hover:bg-surface hover:text-slate-200'
                             }`}
                     >
                         {preset.label}
@@ -610,7 +610,7 @@ export const RadiusInput = ({ label, values, onChange, originalValues, onReset, 
                         <span className="text-[10px] text-slate-500 font-medium">Manual Input</span>
                         <button
                             onClick={() => setIsFineTune(false)} // Just verify if they want separate collapse
-                            className="text-[9px] text-slate-600 hover:text-blue-400 flex items-center gap-1"
+                            className="text-[9px] text-slate-600 hover:text-primary flex items-center gap-1"
                         >
                             {areCornersDifferent ? 'Collapse' : 'Expand Corners'}
                         </button>
@@ -654,7 +654,7 @@ export const SelectInput = ({ label, value, options, onChange, originalValue, on
                 {isChanged && (
                     <button
                         onClick={onReset}
-                        className="text-slate-600 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all p-0.5 rounded"
+                        className="text-slate-600 hover:text-primary opacity-0 group-hover:opacity-100 transition-all p-0.5 rounded"
                         title="Reset to original"
                     >
                         <RotateCcw size={10} />
@@ -664,7 +664,7 @@ export const SelectInput = ({ label, value, options, onChange, originalValue, on
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full text-sm bg-slate-950 text-slate-200 border border-slate-700 rounded-md px-2 py-1.5 outline-none focus:border-blue-500"
+                className="w-full text-sm bg-bg text-slate-200 border border-slate-700 rounded-md px-2 py-1.5 outline-none focus:border-primary"
             >
                 {options.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>

@@ -1,11 +1,11 @@
-if (!window.CSSPicker) window.CSSPicker = {};
+if (!window.Picky_Editor) window.Picky_Editor = {};
 
 /**
  * Sets up the main message listener for the content script
  * @param {ElementChangeTracker} tracker - The tracker instance
  * @param {object} handlers - specific handlers for other actions { onStartPicking, onStopPicking, onScanPage, onScanAssets, onSelectNode, onHighlightNode }
  */
-window.CSSPicker.setupMessageListeners = function (tracker, handlers) {
+window.Picky_Editor.setupMessageListeners = function (tracker, handlers) {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // 1. SCANNING (Overview / Assets)
         if (request.type === 'SCAN_PAGE') {
