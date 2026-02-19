@@ -56,7 +56,7 @@ export default function OverviewTab({ onTabChange, onToggleInspect, selectedElem
                 </h3>
                 <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
                     {isRestricted
-                        ? "For security reasons, Picky_Editor cannot be used on internal browser pages or the Web Store."
+                        ? "For security reasons, Picky.Editor cannot be used on internal browser pages or the Web Store."
                         : error
                     }
                 </p>

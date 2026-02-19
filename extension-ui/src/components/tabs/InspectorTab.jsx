@@ -153,7 +153,7 @@ export default function InspectorTab() {
                 </h3>
                 <p className="text-dim-text text-sm mb-6 max-w-[200px]">
                     {isRestricted
-                        ? "For security reasons, Picky_Editor cannot be used on internal browser pages or the Web Store."
+                        ? "For security reasons, Picky.Editor cannot be used on internal browser pages or the Web Store."
                         : pageError
                     }
                 </p>

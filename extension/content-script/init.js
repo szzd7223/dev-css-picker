@@ -1,7 +1,7 @@
 // extension/content-script/init.js
 
 (function () {
-    console.log('Picky_Editor: Content script modules loaded.');
+    console.log('Picky.Editor: Content script modules loaded.');
 
     const { startPicking, stopPicking, setLastElement } = window.Picky_Editor.picking;
     const { extractOverviewData } = window.Picky_Editor.scanner;
@@ -13,7 +13,7 @@
     if (window.Picky_Editor.ElementChangeTracker) {
         window.Picky_Editor.tracker = new window.Picky_Editor.ElementChangeTracker();
     } else {
-        console.error('Picky_Editor: ElementChangeTracker not found. Make sure tracker.js is loaded first.');
+        console.error('Picky.Editor: ElementChangeTracker not found. Make sure tracker.js is loaded first.');
     }
 
     // Handlers Interface
@@ -70,7 +70,7 @@
     if (window.Picky_Editor.setupMessageListeners) {
         window.Picky_Editor.setupMessageListeners(window.Picky_Editor.tracker, handlers);
     } else {
-        console.error('Picky_Editor: setupMessageListeners not found. Make sure messaging.js is loaded first.');
+        console.error('Picky.Editor: setupMessageListeners not found. Make sure messaging.js is loaded first.');
     }
 
 })();

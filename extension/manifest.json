@@ -1,8 +1,14 @@
 {
     "manifest_version": 3,
-    "name": "Picky_Editor",
+    "name": "Picky.Editor",
     "version": "1.0",
     "description": "A minimal Chrome Extension to pick and view CSS elements.",
+    "icons": {
+        "16": "assets/pickyEditor-icon-16.png",
+        "32": "assets/pickyEditor-icon-32.png",
+        "48": "assets/pickyEditor-icon-48.png",
+        "128": "assets/pickyEditor-icon-128.png"
+    },
     "permissions": [
         "activeTab",
         "tabs",
@@ -13,7 +19,13 @@
         "<all_urls>"
     ],
     "action": {
-        "default_title": "Open Picky_Editor"
+        "default_title": "Open Picky.Editor",
+        "default_icon": {
+            "16": "assets/pickyEditor-icon-16.png",
+            "32": "assets/pickyEditor-icon-32.png",
+            "48": "assets/pickyEditor-icon-48.png",
+            "128": "assets/pickyEditor-icon-128.png"
+        }
     },
     "side_panel": {
         "default_path": "sidebar/index.html"
